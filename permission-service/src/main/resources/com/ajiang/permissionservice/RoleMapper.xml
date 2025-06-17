@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ajiang.permissionservice.mapper.RoleMapper">
+    <select id="selectByRoleCode" resultType="com.ajiang.permissionservice.entity.Role">
+        SELECT role_id, role_code
+        FROM roles
+        WHERE role_code = #{roleCode}
+    </select>
+
+    <select id="selectAll" resultType="com.ajiang.permissionservice.entity.Role">
+        SELECT role_id, role_code
+        FROM roles
+    </select>
+</mapper>

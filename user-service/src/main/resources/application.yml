@@ -1,0 +1,128 @@
+server:
+  port: 8081
+
+spring:
+  application:
+    name: user-service
+
+  # 配置中心
+  cloud:
+    nacos:
+      discovery:
+        server-addr: 127.0.0.1:8848
+      config:
+        server-addr: 127.0.0.1:8848
+        file-extension: yaml
+
+    # RocketMQ配置
+    stream:
+      rocketmq:
+        binder:
+          name-server: 127.0.0.1:9876
+      bindings:
+        log-output:
+          destination: operation-logs
+          content-type: application/json
+
+  # ShardingSphere分库分表配置
+  shardingsphere:
+    datasource:
+      names: ds0,ds1
+      # 数据源1配置
+      ds0:
+        type: com.zaxxer.hikari.HikariDataSource
+        driver-class-name: com.mysql.cj.jdbc.Driver
+        jdbc-url: jdbc:mysql://localhost:3306/user_db_0?useUnicode=true&characterEncoding=utf-8&useSSL=false
+        username: root
+        password: 123456
+      # 数据源2配置
+      ds1:
+        type: com.zaxxer.hikari.HikariDataSource
+        driver-class-name: com.mysql.cj.jdbc.Driver
+        jdbc-url: jdbc:mysql://localhost:3306/user_db_1?useUnicode=true&characterEncoding=utf-8&useSSL=false
+        username: root
+        password: 123456
+    rules:
+      sharding:
+        # 分片算法配置
+        sharding-algorithms:
+          user-id-mod:
+            type: MOD
+            props:
+              sharding-count: 2
+        # 分片表配置
+        tables:
+          users:
+            # 真实数据节点
+            actual-data-nodes: ds$->{0..1}.users
+            # 分库策略
+            database-strategy:
+              standard:
+                sharding-column: user_id
+                sharding-algorithm-name: user-id-mod
+            # 分布式序列配置
+            key-generate-strategy:
+              column: user_id
+              key-generator-name: snowflake
+        # 分布式序列生成器
+        key-generators:
+          snowflake:
+            type: SNOWFLAKE
+            props:
+              worker-id: 123
+    # 打印SQL
+    props:
+      sql-show: true
+
+  # JPA配置
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.MySQL8Dialect
+
+# Seata分布式事务配置
+seata:
+  enabled: true
+  application-id: ${spring.application.name}
+  tx-service-group: user_service_tx_group
+  service:
+    vgroup-mapping:
+      user_service_tx_group: default
+  registry:
+    type: nacos
+    nacos:
+      server-addr: 127.0.0.1:8848
+      namespace: ""
+      group: SEATA_GROUP
+
+# Feign配置
+feign:
+  client:
+    config:
+      default:
+        connectTimeout: 5000
+        readTimeout: 5000
+  compression:
+    request:
+      enabled: true
+    response:
+      enabled: true
+
+# JWT配置
+jwt:
+  secret: Ajiang
+  expiration: 86400 # 24小时
+
+# 日志配置
+logging:
+  level:
+    com.example.userservice: INFO
+    org.springframework.web: INFO
+    org.hibernate: INFO
+    org.apache.shardingsphere: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"

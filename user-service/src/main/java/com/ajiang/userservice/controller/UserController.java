@@ -1,6 +1,6 @@
 package com.ajiang.userservice.controller;
 
-import com.ajiang.userservice.dto.ApiResponse;
+import com.ajiang.common.model.ApiResponse;
 import com.ajiang.userservice.dto.PasswordResetDto;
 import com.ajiang.userservice.dto.UserRegisterDto;
 import com.ajiang.userservice.service.UserService;
@@ -25,8 +25,6 @@ public class UserController {
     @Autowired
     UserService userService;
 
-    @Autowired
-
     /**
      * @description: 用户注册
      * @author: ajiang
@@ -36,7 +34,8 @@ public class UserController {
      **/
     @PostMapping("/register")
     public ApiResponse<Long> register(@RequestBody @Valid UserRegisterDto registerDto){
-        Long userId = userService.register(registerDto);
+
+        Long userId = userService.register(registerDto, ip);
         return ApiResponse.success(userId);
     }
 

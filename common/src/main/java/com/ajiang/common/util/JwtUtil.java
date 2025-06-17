@@ -1,4 +1,4 @@
-package com.ajiang.userservice.util;
+package com.ajiang.common.util;
 
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;

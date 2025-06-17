@@ -1,6 +1,8 @@
 package com.ajiang.userservice.service;
 
 import com.ajiang.userservice.dto.UserRegisterDto;
+import com.ajiang.userservice.entity.User;
+import com.baomidou.mybatisplus.extension.service.IService;
 import org.springframework.stereotype.Service;
 
 import javax.validation.Valid;
@@ -14,7 +16,7 @@ import javax.validation.Valid;
  *@Version: 1.0
  */
 @Service
-public interface UserService {
+public interface UserService extends IService<User> {
 
-    Long register(UserRegisterDto registerDto);
+    Long register(UserRegisterDto registerDto, String ip);
 }

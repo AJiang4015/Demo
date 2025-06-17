@@ -1,4 +1,4 @@
-package com.ajiang.userservice.dto;
+package com.ajiang.common.model;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -17,15 +17,6 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class ApiResponse<T> {
 
-    /**
-     * 响应码
-     * 200: 成功
-     * 400: 客户端错误
-     * 401: 未授权
-     * 403: 禁止访问
-     * 404: 资源不存在
-     * 500: 服务器错误
-     */
     private Integer code;
 
     /**

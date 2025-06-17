@@ -18,6 +18,7 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @TableName("roles")
 public class Role {
+
     /**
      * 角色ID
      * 1:超级管理员 2:普通用户 3:管理员

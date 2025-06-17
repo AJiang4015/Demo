@@ -19,6 +19,7 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @TableName("users")
 public class User {
+
     /**
      * 用户ID - 分片键（雪花算法）
      */

@@ -17,6 +17,7 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @TableName("user_roles")
 public class UserRole {
+
     /**
      * 主键ID（分布式ID）
      */

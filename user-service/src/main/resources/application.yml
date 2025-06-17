@@ -24,65 +24,89 @@ spring:
           destination: operation-logs
           content-type: application/json
 
-  # ShardingSphere分库分表配置
+  # ShardingSphere分库分表配置（2库×2表）
   shardingsphere:
     datasource:
-      names: ds0,ds1
-      # 数据源1配置
+      names: ds0, ds1
+      # 数据库1配置（对应db_user0）
       ds0:
         type: com.zaxxer.hikari.HikariDataSource
         driver-class-name: com.mysql.cj.jdbc.Driver
-        jdbc-url: jdbc:mysql://localhost:3306/user_db_0?useUnicode=true&characterEncoding=utf-8&useSSL=false
+        jdbc-url: jdbc:mysql://localhost:3306/db_user0?useUnicode=true&characterEncoding=utf-8&useSSL=false
         username: root
         password: 123456
-      # 数据源2配置
+        connection-timeout: 30000
+        idle-timeout: 600000
+        max-lifetime: 1800000
+        maximum-pool-size: 15
+        minimum-idle: 5
+      # 数据库2配置（对应db_user1）
       ds1:
         type: com.zaxxer.hikari.HikariDataSource
         driver-class-name: com.mysql.cj.jdbc.Driver
-        jdbc-url: jdbc:mysql://localhost:3306/user_db_1?useUnicode=true&characterEncoding=utf-8&useSSL=false
+        jdbc-url: jdbc:mysql://localhost:3306/db_user1?useUnicode=true&characterEncoding=utf-8&useSSL=false
         username: root
         password: 123456
+        connection-timeout: 30000
+        idle-timeout: 600000
+        max-lifetime: 1800000
+        maximum-pool-size: 15
+        minimum-idle: 5
     rules:
       sharding:
         # 分片算法配置
         sharding-algorithms:
-          user-id-mod:
-            type: MOD
+          # 分库算法（按user_id % 2）
+          database-inline:
+            type: INLINE
             props:
-              sharding-count: 2
-        # 分片表配置
-        tables:
-          users:
-            # 真实数据节点
-            actual-data-nodes: ds$->{0..1}.users
-            # 分库策略
-            database-strategy:
-              standard:
-                sharding-column: user_id
-                sharding-algorithm-name: user-id-mod
-            # 分布式序列配置
-            key-generate-strategy:
-              column: user_id
-              key-generator-name: snowflake
-        # 分布式序列生成器
+              algorithm-expression: ds$->{user_id % 2}
+          # 分表算法（按user_id % 2）
+          table-inline:
+            type: INLINE
+            props:
+              algorithm-expression: users_$->{user_id % 2}
+        # 分布式序列配置
         key-generators:
           snowflake:
             type: SNOWFLAKE
             props:
               worker-id: 123
+        # 分片表配置
+        tables:
+          users:
+            # 真实数据节点：2个库 × 2张表
+            actual-data-nodes: ds$->{0..1}.users_$->{0..1}
+            # 分库策略
+            database-strategy:
+              standard:
+                sharding-column: user_id
+                sharding-algorithm-name: database-inline
+            # 分表策略
+            table-strategy:
+              standard:
+                sharding-column: user_id
+                sharding-algorithm-name: table-inline
+            # 主键生成策略
+            key-generate-strategy:
+              column: user_id
+              key-generator-name: snowflake
     # 打印SQL
     props:
       sql-show: true
 
-  # JPA配置
-  jpa:
-    hibernate:
-      ddl-auto: update
-    show-sql: true
-    properties:
-      hibernate:
-        format_sql: true
-        dialect: org.hibernate.dialect.MySQL8Dialect
+  # 移除JPA配置（使用MyBatis-Plus）
+  # 添加MyBatis-Plus配置
+  mybatis-plus:
+    configuration:
+      map-underscore-to-camel-case: true
+      log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+    global-config:
+      db-config:
+        id-type: assign_id
+        logic-delete-field: deleted
+        logic-delete-value: 1
+        logic-not-delete-value: 0
 
 # Seata分布式事务配置
 seata:
@@ -114,15 +138,15 @@ feign:
 
 # JWT配置
 jwt:
-  secret: Ajiang
+  secret: AJiang
   expiration: 86400 # 24小时
 
 # 日志配置
 logging:
   level:
-    com.example.userservice: INFO
+    com.example.userservice: DEBUG
     org.springframework.web: INFO
-    org.hibernate: INFO
-    org.apache.shardingsphere: INFO
+    org.apache.shardingsphere: DEBUG
+    com.alibaba.nacos: WARN
   pattern:
-    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"

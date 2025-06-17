@@ -1,4 +1,4 @@
-package com.ajiang.userservice.exception;
+package com.ajiang.common.exception;
 
 /**
  * 业务异常类

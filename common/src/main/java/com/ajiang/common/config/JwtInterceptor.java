@@ -1,7 +1,8 @@
-package com.ajiang.userservice.config;
+package com.ajiang.common.config;
 
-import com.ajiang.userservice.exception.BusinessException;
-import com.ajiang.userservice.util.JwtUtil;
+
+import com.ajiang.common.exception.BusinessException;
+import com.ajiang.common.util.JwtUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;

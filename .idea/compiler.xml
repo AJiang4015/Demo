@@ -7,16 +7,18 @@
         <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
         <outputRelativeToContentRoot value="true" />
         <module name="permission-service" />
-        <module name="logging-service" />
         <module name="user-service" />
+        <module name="common" />
+        <module name="logging-service" />
       </profile>
     </annotationProcessing>
   </component>
   <component name="JavacSettings">
     <option name="ADDITIONAL_OPTIONS_OVERRIDE">
-      <module name="logging-service" options="-parameters" />
-      <module name="permission-service" options="-parameters" />
-      <module name="user-service" options="-parameters" />
+      <module name="common" options="" />
+      <module name="logging-service" options="" />
+      <module name="permission-service" options="" />
+      <module name="user-service" options="" />
     </option>
   </component>
 </project>

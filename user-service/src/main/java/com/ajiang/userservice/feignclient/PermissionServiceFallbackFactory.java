@@ -1,3 +1,4 @@
+/*
 package com.ajiang.userservice.feignclient;
 
 import lombok.extern.slf4j.Slf4j;
@@ -16,13 +17,12 @@ public class PermissionServiceFallbackFactory implements FallbackFactory<Permiss
             @Override
             public void bindDefaultRole(Long userId) {
                 log.warn("bindDefaultRole降级处理: userId={}", userId);
-                // 这里可添加本地补偿逻辑
             }
 
             @Override
             public String getUserRoleCode(Long userId) {
                 log.warn("getUserRoleCode降级处理: userId={}", userId);
-                return "user"; // 默认返回普通用户角色
+                return "user";
             }
 
             @Override
@@ -36,4 +36,4 @@ public class PermissionServiceFallbackFactory implements FallbackFactory<Permiss
             }
         };
     }
-}
+}*/

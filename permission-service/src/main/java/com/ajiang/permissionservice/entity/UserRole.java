@@ -24,13 +24,7 @@ public class UserRole {
     @TableId(type = IdType.ASSIGN_ID)
     private Long id;
 
-    /**
-     * 用户ID
-     */
     private Long userId;
 
-    /**
-     * 角色ID
-     */
     private Integer roleId;
 }

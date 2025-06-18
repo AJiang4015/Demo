@@ -13,17 +13,9 @@ import javax.validation.constraints.Size;
 @Data
 public class PasswordResetDto {
 
-    /**
-     * 用户ID
-     * 不能为空
-     */
     @NotNull(message = "用户ID不能为空")
     private Long userId;
 
-    /**
-     * 新密码
-     * 不能为空，长度在6-20之间
-     */
     @NotBlank(message = "新密码不能为空")
     @Size(min = 6, max = 20, message = "密码长度必须在6-20之间")
     private String newPassword;

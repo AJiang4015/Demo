@@ -1,7 +1,6 @@
 package com.ajiang.common.exception;
 
-
-import com.ajiang.userservice.dto.ApiResponse;
+import com.ajiang.common.model.ApiResponse;
 import feign.FeignException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;

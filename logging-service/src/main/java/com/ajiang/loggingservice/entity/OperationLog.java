@@ -19,34 +19,18 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @TableName("operation_logs")
 public class OperationLog {
+
     /**
      * 日志ID（分布式ID）
      */
     @TableId(type = IdType.ASSIGN_ID)
     private Long logId;
 
-    /**
-     * 用户ID
-     */
     private Long userId;
 
-    /**
-     * 操作类型
-     */
     private String action;
 
-    /**
-     * 操作IP
-     */
     private String ip;
 
-    /**
-     * 操作详情（JSON格式）
-     */
     private String detail;
-
-    /**
-     * 操作时间
-     */
-    private LocalDateTime operationTime;
 }

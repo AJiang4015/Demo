@@ -2,10 +2,8 @@ package com.ajiang.userservice.mapper;
 
 import com.ajiang.userservice.entity.User;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import org.apache.ibatis.annotations.Mapper;
-import org.apache.ibatis.annotations.Param;
-
-import java.util.List;
 
 /**
  * 用户数据访问层接口
@@ -14,4 +12,5 @@ import java.util.List;
 @Mapper
 public interface UserMapper extends BaseMapper<User> {
 
+    Page<User> userPage(Page<User> page);
 }

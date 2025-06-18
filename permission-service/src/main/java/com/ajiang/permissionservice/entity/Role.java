@@ -1,7 +1,6 @@
 package com.ajiang.permissionservice.entity;
 
 import com.baomidou.mybatisplus.annotation.IdType;
-import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.AllArgsConstructor;
@@ -26,8 +25,6 @@ public class Role {
     @TableId(value = "role_id", type = IdType.INPUT)
     private Integer roleId;
 
-    /**
-     * 角色代码
-     */
     private String roleCode;
+
 }

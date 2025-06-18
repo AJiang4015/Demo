@@ -8,9 +8,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-/**
- * 角色实体类
- */
+
 @Data
 @Builder
 @NoArgsConstructor

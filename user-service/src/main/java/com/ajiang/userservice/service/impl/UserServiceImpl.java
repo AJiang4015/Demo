@@ -17,7 +17,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.crypto.password.PasswordEncoder;
+import com.ajiang.common.config.AppConfig.SimplePasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
@@ -45,7 +45,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     private JwtUtil jwtUtil;
 
     @Autowired
-    private PasswordEncoder passwordEncoder;
+    private SimplePasswordEncoder passwordEncoder;
 
     /**
      * @description: 用户注册

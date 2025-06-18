@@ -33,7 +33,7 @@ mybatis-plus:
 logging:
   level:
     com.ajiang.userservice: debug
-    org.springframework.security: debug
+
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{50} - %msg%n"
 

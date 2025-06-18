@@ -8,9 +8,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-/**
- * 用户角色关系实体类
- */
+
 @Data
 @Builder
 @NoArgsConstructor
@@ -18,10 +16,7 @@ import lombok.NoArgsConstructor;
 @TableName("user_roles")
 public class UserRole {
 
-    /**
-     * 主键ID（分布式ID）
-     */
-    @TableId(type = IdType.ASSIGN_ID)
+    @TableId(type = IdType.AUTO)
     private Long id;
 
     private Long userId;

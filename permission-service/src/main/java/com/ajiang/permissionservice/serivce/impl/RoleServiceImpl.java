@@ -49,6 +49,7 @@ public class RoleServiceImpl extends ServiceImpl<RoleMapper, Role> implements Ro
                     .userId(userId)
                     .roleId(2)
                     .build();
+            log.debug("插入前 userRole.id={}", userRole.getId());
             if (userRoleMapper.insert(userRole) <= 0) {
                 log.error("绑定默认角色失败: userId={}, roleCode={}", userId, "user");
                 throw new BusinessException("绑定默认角色失败");
@@ -127,15 +128,13 @@ public class RoleServiceImpl extends ServiceImpl<RoleMapper, Role> implements Ro
     }
 
     @Override
-    @Transactional(rollbackFor = Exception.class)
     public void upgradeToAdmin(Long userId) {
-        changeUserRole(userId, 2);
+        changeUserRole(userId, 3);
     }
 
     @Override
-    @Transactional(rollbackFor = Exception.class)
     public void downgradeToUser(Long userId) {
-        changeUserRole(userId, 1);
+        changeUserRole(userId, 2);
     }
 
 }

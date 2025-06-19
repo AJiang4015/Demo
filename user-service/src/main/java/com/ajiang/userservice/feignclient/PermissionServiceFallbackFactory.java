@@ -4,6 +4,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.cloud.openfeign.FallbackFactory;
 import org.springframework.stereotype.Component;
 
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+
 @Slf4j
 @Component
 public class PermissionServiceFallbackFactory implements FallbackFactory<PermissionServiceClient> {
@@ -33,6 +37,7 @@ public class PermissionServiceFallbackFactory implements FallbackFactory<Permiss
             public void downgradeToUser(Long userId) {
                 log.warn("downgradeToUser降级处理: userId={}", userId);
             }
+
         };
     }
 }

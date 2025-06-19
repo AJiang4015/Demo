@@ -47,11 +47,4 @@ public class AppConfig {
             return encode(rawPassword).equals(encodedPassword);
         }
     }
-
-    @Bean
-    public ObjectMapper objectMapper() {
-        ObjectMapper objectMapper = new ObjectMapper();
-        objectMapper.registerModule(new JavaTimeModule());
-        return objectMapper;
-    }
 }

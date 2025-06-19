@@ -41,7 +41,7 @@ public interface UserService extends IService<User> {
      * @param userId 用户ID
      * @return 用户信息
      */
-    UserResponseDto getUserInfo(Long userId);
+    UserResponseDto getUserInfo(Long currentUserId, Long userId);
 
     /**
      * 获取用户列表

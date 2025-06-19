@@ -3,6 +3,9 @@ package com.ajiang.permissionservice.serivce;
 import com.ajiang.permissionservice.entity.Role;
 import com.baomidou.mybatisplus.extension.service.IService;
 
+import java.util.List;
+import java.util.Map;
+
 /**
  * 角色服务接口
  * 提供用户角色管理的业务逻辑接口
@@ -41,4 +44,5 @@ public interface RoleService extends IService<Role> {
      * @param userId 用户ID
      */
     void downgradeToUser(Long userId);
+
 }

@@ -18,13 +18,17 @@ import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import com.ajiang.common.config.AppConfig.SimplePasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
 import java.time.LocalDateTime;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * 用户服务实现类
@@ -36,13 +40,6 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
 
     @Autowired
     private UserMapper userMapper;
-
-    /*
-     * @Autowired
-     * private LogProducer logProducer;
-     *
-     */
-
 
     @Autowired
     private PermissionServiceClient permissionServiceClient;
@@ -67,7 +64,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         // 检查用户名是否已存在
         LambdaQueryWrapper<User> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(User::getUsername, registerDto.getUsername());
-        if (this.count(queryWrapper) > 0) {
+        if (userMapper.selectCount(queryWrapper) > 0) {
             throw new BusinessException("用户名已存在");
         }
 
@@ -81,7 +78,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
                 .build();
 
         // 保存用户
-        this.save(user);
+        userMapper.insert(user);
         Long userId = user.getUserId();
 
         try {
@@ -92,20 +89,20 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
             log.error("用户绑定默认角色失败: {}, 错误: {}", userId, e.getMessage());
             throw new BusinessException("绑定默认角色失败：" + e.getMessage());
         }
-         /*
+        /*
          * // 发送操作日志至MQ
          * Map<String, Object> detail = new HashMap<>();
          * detail.put("username", user.getUsername());
          * detail.put("email", user.getEmail());
          * detail.put("phone", user.getPhone());
-         * 
+         *
          * LogMessage logMessage = new LogMessage(
          * userId,
          * "REGISTER",
          * ip,
          * JSON.toJSONString(detail));
          * logProducer.sendRegisterLog(logMessage);
-         * 
+         *
          * log.info("用户注册成功: {}", user.getUsername());
          */
         return userId;
@@ -125,7 +122,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         // 查询用户
         LambdaQueryWrapper<User> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(User::getUsername, loginDto.getUsername());
-        User user = this.getOne(queryWrapper);
+        User user = userMapper.selectOne(queryWrapper);
 
         // 验证用户存在且密码正确
         if (user == null) {
@@ -162,7 +159,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
          * "{\"username\":\"" + user.getUsername() + "\"}" // 简单记录登录用户名
          * );
          * logProducer.sendRegisterLog(logMessage);
-         * 
+         *
          * log.info("用户登录成功: {}", user.getUsername());
          */
         return token;
@@ -175,28 +172,55 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
      * @return 用户信息
      */
     @Override
-    public UserResponseDto getUserInfo(Long userId) {
-        // 查询用户
-        User user = this.getById(userId);
+    public UserResponseDto getUserInfo(Long currentUserId, Long userId) {
+
+        // 查询目标用户
+        User user = userMapper.selectById(userId);
         if (user == null) {
             log.warn("用户不存在: {}", userId);
             throw new BusinessException("用户不存在");
         }
 
-        /*
-         * // 获取用户角色
-         * String roleCode;
-         * try {
-         * roleCode = permissionServiceClient.getUserRoleCode(userId);
-         * log.info("获取用户角色码成功: {}, 角色码: {}", userId, roleCode);
-         * } catch (Exception e) {
-         * log.error("获取用户角色码失败: {}, 错误: {}", userId, e.getMessage());
-         * throw new BusinessException("获取用户角色失败: " + e.getMessage());
-         * }
-         */
+        // 查询当前用户的角色码
+        String currentUserRole = permissionServiceClient.getUserRoleCode(currentUserId);
 
-        // 转换为响应DTO
-        return UserResponseDto.fromUser(user, "user");
+        // 权限校验
+        switch (currentUserRole) {
+            case "super_admin":
+                // 超管直接通过
+                break;
+            case "admin":
+                if (currentUserId.equals(userId)) {
+                    break;
+                }
+                // 管理员只能查看普通用户
+                String targetRole = permissionServiceClient.getUserRoleCode(userId);
+                if (!"user".equals(targetRole)) {
+                    log.warn("管理员无权查看非普通用户信息: currentUserId={}, targetUserId={}", currentUserId, userId);
+                    throw new BusinessException("权限不足，无法查看该用户信息");
+                }
+                break;
+            case "user":
+                // 普通用户只能看自己
+                if (!currentUserId.equals(userId)) {
+                    log.warn("普通用户无权查看他人信息: currentUserId={}, targetUserId={}", currentUserId, userId);
+                    throw new BusinessException("权限不足，无法查看该用户信息");
+                }
+                break;
+            default:
+                log.error("未知角色: {}", currentUserRole);
+                throw new BusinessException("非法用户角色");
+        }
+
+        // 构建返回对象
+        UserResponseDto dto = new UserResponseDto();
+        BeanUtils.copyProperties(user, dto);
+
+        // 查询目标用户的角色并设置
+        String targetRoleCode = permissionServiceClient.getUserRoleCode(userId);
+        dto.setRoleCode(targetRoleCode);
+
+        return dto;
     }
 
     /**
@@ -208,53 +232,61 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
      **/
     @Override
     public PageResult<User> getUserList(PageParams pageParams, Long currentUserId) {
-        // 获取当前用户角色
-        String roleCode;
-        /*
-         * try {
-         * roleCode = permissionServiceClient.getUserRoleCode(currentUserId);
-         * log.info("获取用户角色成功: {}, 角色: {}", currentUserId, roleCode);
-         * } catch (Exception e) {
-         * log.error("获取用户角色失败: {}, 错误: {}", currentUserId, e.getMessage());
-         * throw new BusinessException("获取用户角色失败: " + e.getMessage());
-         * }
-         */
+        // 1. 查询当前用户的角色码
+        String currentUserRole = permissionServiceClient.getUserRoleCode(currentUserId);
+        log.info("当前用户角色: {}, userId={}", currentUserRole, currentUserId);
 
-        // 创建分页对象
+        // 2. 创建分页对象（分页 user 表）
         Page<User> page = new Page<>(pageParams.getPageNo(), pageParams.getPageSize());
-        LambdaQueryWrapper<User> queryWrapper = new LambdaQueryWrapper<>();
 
-        // 根据角色权限过滤数据
-        /*
-         * if ("super_admin".equals(roleCode)) {
-         * // 超管可查看所有用户
-         * log.info("超级管理员查询所有用户");
-         * } else if ("admin".equals(roleCode)) {
-         * // 管理员可查看所有普通用户，但不能查看超管
-         * log.info("管理员查询普通用户");
-         * queryWrapper.
-         * notExists("SELECT 1 FROM user_roles ur JOIN roles r ON ur.role_id = r.role_id "
-         * +
-         * "WHERE ur.user_id = users.user_id AND r.role_code = 'super_admin'");
-         * } else {
-         * // 普通用户只能查看自己
-         * log.info("普通用户只查询自己: {}", currentUserId);
-         * queryWrapper.eq(User::getUserId, currentUserId);
-         * }
-         */
+        // 3. 构建查询条件
+        LambdaQueryWrapper<User> wrapper = new LambdaQueryWrapper<>();
+        if ("user".equals(currentUserRole)) {
+            // 普通用户只能查自己
+            wrapper.eq(User::getUserId, currentUserId);
+        }
 
-        // 执行分页查询
-        Page<User> userPage = this.page(page, queryWrapper);
+        // 4. 执行分页查询
+        Page<User> userPage = this.page(page, wrapper);
+        List<User> allUsers = userPage.getRecords();
+        log.debug("分页查询结果: 共 {} 条", allUsers.size());
 
-        // 转换为分页结果
+        // 5. 优化后的过滤逻辑
+        List<User> filteredUsers;
+        if ("super_admin".equals(currentUserRole)) {
+            // 超管直接返回所有查询结果
+            filteredUsers = allUsers;
+        } else if ("admin".equals(currentUserRole)) {
+            // 管理员过滤：只能查看普通用户或自己
+            filteredUsers = allUsers.stream()
+                    .filter(user -> {
+                        if (currentUserId.equals(user.getUserId())) {
+                            return true;  // 允许查看自己
+                        }
+                        try {
+                            String roleCode = permissionServiceClient.getUserRoleCode(user.getUserId());
+                            return "user".equals(roleCode);  // 只能查看普通用户
+                        } catch (Exception e) {
+                            log.warn("远程获取用户角色失败，userId={}, 错误={}", user.getUserId(), e.getMessage());
+                            return false;
+                        }
+                    })
+                    .collect(Collectors.toList());
+        } else {
+            // 普通用户直接使用查询结果（已限定只能查自己）
+            filteredUsers = allUsers;
+        }
+
+        // 6. 构建分页响应结果
         PageResult<User> pageResult = new PageResult<>();
-        pageResult.setItems(userPage.getRecords());
-        pageResult.setCounts(userPage.getTotal());
+        pageResult.setItems(filteredUsers);
+        pageResult.setCounts(filteredUsers.size());
         pageResult.setPage(userPage.getCurrent());
         pageResult.setPageSize(userPage.getSize());
 
         return pageResult;
     }
+
 
     /**
      * @description: 修改用户消息
@@ -272,19 +304,17 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
             throw new BusinessException("用户不存在");
         }
 
-        /*
-         * // 获取当前用户角色
-         * String currentUserRoleCode =
-         * permissionServiceClient.getUserRoleCode(currentUserId);
-         * // 获取目标用户角色
-         * String targetUserRoleCode = permissionServiceClient.getUserRoleCode(userId);
-         * 
-         * // 权限校验
-         * if (!hasPermissionToModify(currentUserRoleCode, targetUserRoleCode,
-         * currentUserId, userId)) {
-         * throw new BusinessException("权限不足，无法修改该用户信息");
-         * }
-         */
+
+        // 获取当前用户角色
+        String currentUserRoleCode = permissionServiceClient.getUserRoleCode(currentUserId);
+        // 获取目标用户角色
+        String targetUserRoleCode = permissionServiceClient.getUserRoleCode(userId);
+
+        // 权限校验
+        if (!hasPermissionToModify(currentUserRoleCode, targetUserRoleCode, currentUserId, userId)) {
+            throw new BusinessException("权限不足，无法修改该用户信息");
+        }
+
 
         /*
          * // 记录修改前的信息，用于日志
@@ -307,7 +337,9 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         updateWrapper.eq(User::getUserId, userId)
                 .set(User::getEmail, user.getEmail())
                 .set(User::getPhone, user.getPhone());
-        boolean result = this.update(updateWrapper);
+        if (userMapper.update(null, updateWrapper) > 0) {
+            return true;
+        }
 
         /*
          * // 发送操作日志
@@ -321,8 +353,9 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
          * }
          */
 
-        return result;
+        return false;
     }
+
 
     /**
      * 重置密码
@@ -339,30 +372,30 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         Long targetUserId = passwordResetDto.getUserId();
 
         // 检查用户是否存在
-        User targetUser = this.getById(targetUserId);
+        User targetUser = userMapper.selectById(targetUserId);
         if (targetUser == null) {
             throw new BusinessException("用户不存在");
         }
 
-        /*
-         * // 获取当前用户角色
-         * String currentUserRoleCode =
-         * permissionServiceClient.getUserRoleCode(currentUserId);
-         * // 获取目标用户角色
-         * String targetUserRoleCode =
-         * permissionServiceClient.getUserRoleCode(targetUserId);
-         * 
-         * // 权限校验
-         * if (!hasPermissionToModify(currentUserRoleCode, targetUserRoleCode,
-         * currentUserId, targetUserId)) {
-         * throw new BusinessException("权限不足，无法重置该用户密码");
-         * }
-         */
+
+        // 获取当前用户角色
+        String currentUserRoleCode =
+                permissionServiceClient.getUserRoleCode(currentUserId);
+        // 获取目标用户角色
+        String targetUserRoleCode =
+                permissionServiceClient.getUserRoleCode(targetUserId);
+        // 权限校验
+        if (!hasPermissionToModify(currentUserRoleCode, targetUserRoleCode, currentUserId, targetUserId)) {
+            throw new BusinessException("权限不足，无法重置该用户密码");
+        }
+
         // 更新密码
         LambdaUpdateWrapper<User> updateWrapper = new LambdaUpdateWrapper<>();
         updateWrapper.eq(User::getUserId, targetUserId)
                 .set(User::getPassword, passwordEncoder.encode(passwordResetDto.getNewPassword()));
-        boolean result = this.update(updateWrapper);
+        if (userMapper.update(null, updateWrapper) > 0) {
+            return true;
+        }
 
         /*
          * // 发送操作日志
@@ -376,6 +409,24 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
          * logProducer.sendRegisterLog(logMessage);
          * }
          */
-        return result;
+        return false;
     }
+
+    private boolean hasPermissionToModify(String currentUserRoleCode, String targetUserRoleCode,
+                                          Long currentUserId, Long targetUserId) {
+        if ("super_admin".equals(currentUserRoleCode)) {
+            return true;
+        }
+
+        if ("admin".equals(currentUserRoleCode) && "user".equals(targetUserRoleCode)) {
+            return true;
+        }
+
+        if ("user".equals(currentUserRoleCode) && currentUserId != null && currentUserId.equals(targetUserId)) {
+            return true;
+        }
+
+        return false;
+    }
+
 }

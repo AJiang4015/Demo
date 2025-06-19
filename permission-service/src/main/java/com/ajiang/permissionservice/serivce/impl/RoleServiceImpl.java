@@ -13,6 +13,13 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.CollectionUtils;
+
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * 权限服务实现类
@@ -136,5 +143,4 @@ public class RoleServiceImpl extends ServiceImpl<RoleMapper, Role> implements Ro
     public void downgradeToUser(Long userId) {
         changeUserRole(userId, 2);
     }
-
 }

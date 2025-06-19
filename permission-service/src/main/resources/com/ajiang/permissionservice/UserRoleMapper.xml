@@ -2,25 +2,11 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.ajiang.permissionservice.mapper.UserRoleMapper">
 
-    <!-- 多表关联查询保留 -->
-    <select id="selectByUserId" resultType="com.ajiang.permissionservice.vo.UserRoleVO">
-        SELECT
-            ur.id, ur.user_id, ur.role_id,
-            r.role_code
-        FROM user_roles ur
-                 JOIN roles r ON ur.role_id = r.role_id
-        WHERE ur.user_id = #{userId}
+    <select id="selectByUserIds" resultType="com.ajiang.permissionservice.entity.UserRole">
+        SELECT * FROM user_roles WHERE user_id IN
+        <foreach collection="userIds" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
     </select>
 
-    <!-- 简化角色编码查询 -->
-    <select id="selectRoleCodeByUserId" resultType="string">
-        SELECT r.role_code
-        FROM user_roles ur
-                 JOIN roles r ON ur.role_id = r.role_id
-        WHERE ur.user_id = #{userId}
-    </select>
-
-    <delete id="deleteByUserId">
-        DELETE FROM user_roles WHERE user_id = #{userId}
-    </delete>
 </mapper>

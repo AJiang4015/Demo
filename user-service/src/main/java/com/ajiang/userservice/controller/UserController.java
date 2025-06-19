@@ -119,11 +119,7 @@ public class UserController {
     public ApiResponse<UserResponseDto> getUserInfo(@PathVariable Long userId, HttpServletRequest request) {
         log.info("获取用户信息请求: userId={}", userId);
         Long currentUserId = getCurrentUserId(request);
-
-        // 检查权限
-        //checkPermission(currentUserId, userId);
-
-        UserResponseDto userInfo = userService.getUserInfo(userId);
+        UserResponseDto userInfo = userService.getUserInfo(currentUserId, userId);
         log.info("获取用户信息成功: userId={}", userId);
         return ApiResponse.success(userInfo);
     }
@@ -180,49 +176,6 @@ public class UserController {
         return ApiResponse.success(result);
     }
 
-/*    *//**
-     * 检查当前用户是否有权限操作目标用户
-     *
-     * @param currentUserId 当前用户ID
-     * @param targetUserId  目标用户ID
-     *//*
-    private void checkPermission(Long currentUserId, Long targetUserId) {
-        // 获取当前用户角色
-        String currentUserRoleCode;
-        try {
-            currentUserRoleCode = permissionServiceClient.getUserRoleCode(currentUserId);
-        } catch (Exception e) {
-            log.error("获取用户角色失败: {}, 错误: {}", currentUserId, e.getMessage());
-            throw new BusinessException("获取用户角色失败: " + e.getMessage());
-        }
-
-        // 如果是超级管理员，允许访问任何用户
-        if ("super_admin".equals(currentUserRoleCode)) {
-            return;
-        }
-
-        // 如果是管理员，不允许访问超级管理员
-        if ("admin".equals(currentUserRoleCode)) {
-            try {
-                String targetUserRoleCode = permissionServiceClient.getUserRoleCode(targetUserId);
-                if ("super_admin".equals(targetUserRoleCode)) {
-                    throw new BusinessException("权限不足，无法访问超级管理员信息");
-                }
-                return;
-            } catch (Exception e) {
-                if (e instanceof BusinessException) {
-                    throw e;
-                }
-                log.error("获取目标用户角色失败: {}, 错误: {}", targetUserId, e.getMessage());
-                throw new BusinessException("获取目标用户角色失败: " + e.getMessage());
-            }
-        }
-
-        // 如果是普通用户，只能访问自己
-        if (!currentUserId.equals(targetUserId)) {
-            throw new BusinessException("权限不足，只能访问自己的信息");
-        }
-    }*/
 
     /**
      * 获取当前用户ID

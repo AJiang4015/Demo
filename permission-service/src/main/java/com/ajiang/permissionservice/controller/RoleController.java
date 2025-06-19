@@ -6,6 +6,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+import java.util.Map;
+
 /**
  * 权限服务控制器
  * 提供用户角色管理的REST接口
@@ -45,11 +48,11 @@ public class RoleController {
      * @return 角色代码（super_admin/admin/user）
      */
     @GetMapping("/code/{userId}")
-    public ApiResponse<String> getUserRoleCode(@PathVariable Long userId) {
+    public String getUserRoleCode(@PathVariable Long userId) {
         log.debug("查询用户角色码请求: userId={}", userId);
         String roleCode = roleService.getUserRoleCode(userId);
         log.debug("查询用户角色码成功: userId={}, roleCode={}", userId, roleCode);
-        return ApiResponse.success(roleCode);
+        return roleCode;
     }
 
     /**

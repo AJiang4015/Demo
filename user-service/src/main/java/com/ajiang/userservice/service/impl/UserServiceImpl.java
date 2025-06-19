@@ -9,8 +9,10 @@ import com.ajiang.userservice.dto.UserLoginDto;
 import com.ajiang.userservice.dto.UserRegisterDto;
 import com.ajiang.userservice.dto.UserResponseDto;
 import com.ajiang.userservice.entity.User;
+import com.ajiang.userservice.feignclient.PermissionServiceClient;
 import com.ajiang.userservice.mapper.UserMapper;
 import com.ajiang.userservice.service.UserService;
+import com.alibaba.fastjson.JSON;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -21,6 +23,8 @@ import com.ajiang.common.config.AppConfig.SimplePasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * 用户服务实现类
@@ -36,10 +40,12 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     /*
      * @Autowired
      * private LogProducer logProducer;
-     * 
-     * @Autowired
-     * private PermissionServiceClient permissionServiceClient;
+     *
      */
+
+
+    @Autowired
+    private PermissionServiceClient permissionServiceClient;
 
     @Autowired
     private JwtUtil jwtUtil;
@@ -78,16 +84,15 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         this.save(user);
         Long userId = user.getUserId();
 
-        /*
-         * try {
-         * // RPC调用权限服务绑定默认角色
-         * permissionServiceClient.bindDefaultRole(userId);
-         * log.info("用户绑定默认角色成功: {}", userId);
-         * } catch (Exception e) {
-         * log.error("用户绑定默认角色失败: {}, 错误: {}", userId, e.getMessage());
-         * throw new BusinessException("绑定默认角色失败：" + e.getMessage());
-         * }
-         * 
+        try {
+            // RPC调用权限服务绑定默认角色
+            permissionServiceClient.bindDefaultRole(userId);
+            log.info("用户绑定默认角色成功: {}", userId);
+        } catch (Exception e) {
+            log.error("用户绑定默认角色失败: {}, 错误: {}", userId, e.getMessage());
+            throw new BusinessException("绑定默认角色失败：" + e.getMessage());
+        }
+         /*
          * // 发送操作日志至MQ
          * Map<String, Object> detail = new HashMap<>();
          * detail.put("username", user.getUsername());

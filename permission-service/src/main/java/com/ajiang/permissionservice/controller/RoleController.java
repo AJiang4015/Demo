@@ -16,7 +16,7 @@ import org.springframework.web.bind.annotation.*;
  */
 @Slf4j
 @RestController
-@RequestMapping("/permission")
+@RequestMapping("/role")
 public class RoleController {
 
     @Autowired
@@ -29,8 +29,8 @@ public class RoleController {
      * @param userId 用户ID
      * @return 操作结果
      */
-    @PostMapping("/role/bind")
-    public ApiResponse<Void> bindDefaultRole(@RequestParam("userId") Long userId) {
+    @PostMapping("/bind/{userId}")
+    public ApiResponse<Void> bindDefaultRole(@PathVariable Long userId) {
         log.info("绑定默认角色请求: userId={}", userId);
         roleService.bindDefaultRole(userId);
         log.info("绑定默认角色成功: userId={}", userId);
@@ -44,8 +44,8 @@ public class RoleController {
      * @param userId 用户ID
      * @return 角色代码（super_admin/admin/user）
      */
-    @GetMapping("/role/code")
-    public ApiResponse<String> getUserRoleCode(@RequestParam("userId") Long userId) {
+    @GetMapping("/code/{userId}")
+    public ApiResponse<String> getUserRoleCode(@PathVariable Long userId) {
         log.debug("查询用户角色码请求: userId={}", userId);
         String roleCode = roleService.getUserRoleCode(userId);
         log.debug("查询用户角色码成功: userId={}, roleCode={}", userId, roleCode);
@@ -59,8 +59,8 @@ public class RoleController {
      * @param userId 用户ID
      * @return 操作结果
      */
-    @PostMapping("/role/upgrade")
-    public ApiResponse<Void> upgradeToAdmin(@RequestParam("userId") Long userId) {
+    @PostMapping("/upgrade/{userId}")
+    public ApiResponse<Void> upgradeToAdmin(@PathVariable Long userId) {
         log.info("升级用户为管理员请求: userId={}", userId);
         roleService.upgradeToAdmin(userId);
         log.info("升级用户为管理员成功: userId={}", userId);
@@ -74,8 +74,8 @@ public class RoleController {
      * @param userId 用户ID
      * @return 操作结果
      */
-    @PostMapping("/role/downgrade")
-    public ApiResponse<Void> downgradeToUser(@RequestParam("userId") Long userId) {
+    @PostMapping("/downgrade/{userId}")
+    public ApiResponse<Void> downgradeToUser(@PathVariable Long userId) {
         log.info("降级用户为普通用户请求: userId={}", userId);
         roleService.downgradeToUser(userId);
         log.info("降级用户为普通用户成功: userId={}", userId);

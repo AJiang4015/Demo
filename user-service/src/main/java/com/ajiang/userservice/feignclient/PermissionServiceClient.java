@@ -1,64 +1,54 @@
-/*
 package com.ajiang.userservice.feignclient;
 
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 
-@FeignClient(
-    name = "permission-service", // 服务名称
-    contextId = "permissionService", // 上下文ID防止冲突
-    fallbackFactory = PermissionServiceFallbackFactory.class // 降级处理
+/**
+ * 权限服务RPC接口客户端
+ * 提供用户角色管理相关的远程调用功能
+ */
+@FeignClient(name = "permission-service", // 服务名称
+        contextId = "permissionService", // 上下文ID防止冲突
+        fallbackFactory = PermissionServiceFallbackFactory.class // 降级处理
 )
 public interface PermissionServiceClient {
-    
 
-    */
-/**
-     * @description: 绑定默认角色（普通用户）
-     * @author: ajiang
-     * @date: 2025/6/17 22:30
-     * @param: [userId]
-     * @return: void
-     **//*
+    /**
+     * 绑定默认角色（普通用户）
+     * 用于用户注册时自动绑定默认角色
+     *
+     * @param userId 用户ID
+     */
+    @PostMapping("/role/bind/{userId}")
+    void bindDefaultRole(@PathVariable("userId") Long userId);
 
-    @PostMapping("/role/bind")
-    void bindDefaultRole(@RequestParam("userId") Long userId);
-    
-    */
-/**
-     * @description: 查询用户角色码
-     * @author: ajiang
-     * @date: 2025/6/17 22:31
-     * @param: [userId]
-     * @return: role_code
-     **//*
+    /**
+     * 查询用户角色码
+     * 返回用户的角色代码：super_admin/admin/user
+     *
+     * @param userId 用户ID
+     * @return 角色代码
+     */
+    @GetMapping("/role/code/{userId}")
+    String getUserRoleCode(@PathVariable("userId") Long userId);
 
-    @GetMapping("/role/code")
-    String getUserRoleCode(@RequestParam("userId") Long userId);
-    
-    */
-/**
-     * @description: 超管调用：升级用户为管理员
-     * @author: ajiang
-     * @date: 2025/6/17 22:31
-     * @param: [userId]
-     * @return: void
-     **//*
+    /**
+     * 超管调用：升级用户为管理员
+     * 只有超级管理员可以调用此接口
+     *
+     * @param userId 用户ID
+     */
+    @PostMapping("/role/upgrade/{userId}")
+    void upgradeToAdmin(@PathVariable("userId") Long userId);
 
-    @PostMapping("/role/upgrade")
-    void upgradeToAdmin(@RequestParam("userId") Long userId);
-    
-    */
-/**
-     * @description: 超管调用：降级用户为普通角色
-     * @author: ajiang
-     * @date: 2025/6/17 22:32
-     * @param: [userId]
-     * @return: void
-     **//*
-
-    @PostMapping("/role/downgrade")
-    void downgradeToUser(@RequestParam("userId") Long userId);
-}*/
+    /**
+     * 超管调用：降级用户为普通角色
+     * 只有超级管理员可以调用此接口
+     *
+     * @param userId 用户ID
+     */
+    @PostMapping("/role/downgrade/{userId}")
+    void downgradeToUser(@PathVariable("userId") Long userId);
+}

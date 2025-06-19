@@ -4,7 +4,15 @@ server:
 spring:
   application:
     name: logging-service
-  
+  cloud:
+    nacos:
+      discovery:
+        server-addr: localhost:8848
+        namespace: public
+        group: DEFAULT_GROUP
+        metadata:
+          version: 1.0.0
+          management.context-path: /actuator
   # 数据库配置
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver

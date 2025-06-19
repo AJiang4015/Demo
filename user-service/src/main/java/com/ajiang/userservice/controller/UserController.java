@@ -10,6 +10,7 @@ import com.ajiang.userservice.dto.UserLoginDto;
 import com.ajiang.userservice.dto.UserRegisterDto;
 import com.ajiang.userservice.dto.UserResponseDto;
 import com.ajiang.userservice.entity.User;
+import com.ajiang.userservice.feignclient.PermissionServiceClient;
 import com.ajiang.userservice.service.UserService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -37,10 +38,10 @@ public class UserController {
     /*
      * @Autowired
      * private JwtUtil jwtUtil;
-     * 
-     * @Autowired
-     * private PermissionServiceClient permissionServiceClient;
      */
+
+    @Autowired
+    private PermissionServiceClient permissionServiceClient;
 
     /**
      * 用户注册

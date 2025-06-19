@@ -1,4 +1,3 @@
-/*
 package com.ajiang.userservice.feignclient;
 
 import lombok.extern.slf4j.Slf4j;
@@ -12,7 +11,7 @@ public class PermissionServiceFallbackFactory implements FallbackFactory<Permiss
     @Override
     public PermissionServiceClient create(Throwable cause) {
         log.error("PermissionService调用失败: {}", cause.getMessage());
-        
+
         return new PermissionServiceClient() {
             @Override
             public void bindDefaultRole(Long userId) {
@@ -36,4 +35,4 @@ public class PermissionServiceFallbackFactory implements FallbackFactory<Permiss
             }
         };
     }
-}*/
+}

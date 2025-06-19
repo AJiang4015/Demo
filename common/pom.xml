@@ -48,10 +48,6 @@
             <artifactId>spring-cloud-starter-loadbalancer</artifactId>
         </dependency>
 
-
-
-
-
         <!-- MyBatis Plus -->
         <dependency>
             <groupId>com.baomidou</groupId>
@@ -64,8 +60,6 @@
             <artifactId>mysql-connector-java</artifactId>
             <scope>runtime</scope>
         </dependency>
-
-
 
         <!-- JWT 认证 -->
         <dependency>
@@ -122,7 +116,7 @@
                 </configuration>
             </plugin>
         </plugins>
-        
+
         <!-- 资源文件过滤配置 -->
         <resources>
             <resource>

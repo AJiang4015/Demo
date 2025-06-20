@@ -241,6 +241,36 @@ curl -X POST http://localhost:8081/user/login \
 4. **角色权限**：基于角色的访问控制，支持三级权限管理
 5. **操作审计**：完整记录用户操作日志，便于审计和追踪
 
+## 最新更新记录
+
+### 2025年1月 - 完善操作日志功能
+
+**更新内容**：为user-service的所有业务方法添加完整的MQ操作日志记录
+
+**具体改进**：
+1. **完善日志覆盖**：为`getUserInfo`和`getUserList`方法添加了MQ日志发送功能
+2. **增强日志信息**：所有操作日志现在都包含完整的IP地址信息
+3. **新增日志类型**：
+   - `USER_INFO_VIEW`：用户信息查看日志
+   - `USER_LIST_VIEW`：用户列表查看日志
+4. **优化日志内容**：
+   - 查看用户信息日志包含：目标用户名、目标用户ID、操作类型
+   - 查看用户列表日志包含：当前用户角色、分页信息、结果数量、操作类型
+
+**技术实现**：
+- 扩展了`LogProducer`类，新增`sendUserInfoViewLog`和`sendUserListViewLog`方法
+- 更新了`UserService`接口和`UserServiceImpl`实现类的方法签名
+- 修改了`UserController`控制器，确保IP地址正确传递到服务层
+- 所有操作日志都通过RabbitMQ异步发送到logging-service进行处理
+
+**日志记录范围**：
+- ✅ 用户注册 (`USER_REGISTER`)
+- ✅ 用户登录 (`USER_LOGIN`)
+- ✅ 用户信息查看 (`USER_INFO_VIEW`) - **新增**
+- ✅ 用户列表查看 (`USER_LIST_VIEW`) - **新增**
+- ✅ 用户信息修改 (`USER_UPDATE`)
+- ✅ 密码重置 (`PASSWORD_RESET`)
+
 ## 后续扩展计划
 
 1. **分库分表**：当用户量增长时，可引入ShardingSphere实现数据分片

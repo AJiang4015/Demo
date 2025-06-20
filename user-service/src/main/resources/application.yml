@@ -7,7 +7,7 @@ spring:
   cloud:
     nacos:
       discovery:
-        server-addr: localhost:8848
+        server-addr: 192.168.127.102:8848
         namespace: public
         group: DEFAULT_GROUP
         metadata:
@@ -24,6 +24,19 @@ spring:
       connection-timeout: 30000
       idle-timeout: 600000
       max-lifetime: 1800000
+
+  # RabbitMQ 配置
+  rabbitmq:
+    host: 192.168.127.102
+    port: 5672
+    username: admin
+    password: admin
+    virtual-host: /
+    connection-timeout: 15000
+    publisher-confirm-type: correlated
+    publisher-returns: true
+    template:
+      mandatory: true
 
 # MyBatis Plus 配置
 mybatis-plus:

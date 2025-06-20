@@ -38,19 +38,22 @@ public interface UserService extends IService<User> {
     /**
      * 获取用户信息
      *
-     * @param userId 用户ID
+     * @param currentUserId 当前用户ID
+     * @param userId        目标用户ID
+     * @param ip            客户端IP
      * @return 用户信息
      */
-    UserResponseDto getUserInfo(Long currentUserId, Long userId);
+    UserResponseDto getUserInfo(Long currentUserId, Long userId, String ip);
 
     /**
      * 获取用户列表
      *
      * @param pageParams    分页参数
      * @param currentUserId 当前用户ID
+     * @param ip            客户端IP
      * @return 分页用户列表
      */
-    PageResult<User> getUserList(PageParams pageParams, Long currentUserId);
+    PageResult<User> getUserList(PageParams pageParams, Long currentUserId, String ip);
 
     /**
      * 修改用户信息

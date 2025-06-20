@@ -11,6 +11,7 @@ import com.ajiang.userservice.dto.UserResponseDto;
 import com.ajiang.userservice.entity.User;
 import com.ajiang.userservice.feignclient.PermissionServiceClient;
 import com.ajiang.userservice.mapper.UserMapper;
+import com.ajiang.userservice.mq.LogProducer;
 import com.ajiang.userservice.service.UserService;
 import com.alibaba.fastjson.JSON;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
@@ -49,6 +50,9 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
 
     @Autowired
     private SimplePasswordEncoder passwordEncoder;
+
+    @Autowired
+    private LogProducer logProducer;
 
     /**
      * @description: 用户注册
@@ -89,22 +93,11 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
             log.error("用户绑定默认角色失败: {}, 错误: {}", userId, e.getMessage());
             throw new BusinessException("绑定默认角色失败：" + e.getMessage());
         }
-        /*
-         * // 发送操作日志至MQ
-         * Map<String, Object> detail = new HashMap<>();
-         * detail.put("username", user.getUsername());
-         * detail.put("email", user.getEmail());
-         * detail.put("phone", user.getPhone());
-         *
-         * LogMessage logMessage = new LogMessage(
-         * userId,
-         * "REGISTER",
-         * ip,
-         * JSON.toJSONString(detail));
-         * logProducer.sendRegisterLog(logMessage);
-         *
-         * log.info("用户注册成功: {}", user.getUsername());
-         */
+
+        // 发送用户注册日志到MQ
+        logProducer.sendUserRegisterLog(userId, user.getUsername(), user.getEmail(), user.getPhone(), ip);
+
+        log.info("用户注册成功: {}", user.getUsername());
         return userId;
     }
 
@@ -135,44 +128,26 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
             throw new BusinessException("用户名或密码错误");
         }
 
-        /*
-         * // 获取用户角色
-         * String roleCode;
-         * try {
-         * roleCode = permissionServiceClient.getUserRoleCode(user.getUserId());
-         * log.info("获取用户角色成功: {}, 角色: {}", user.getUsername(), roleCode);
-         * } catch (Exception e) {
-         * log.error("获取用户角色失败: {}, 错误: {}", user.getUsername(), e.getMessage());
-         * throw new BusinessException("获取用户角色失败: " + e.getMessage());
-         * }
-         */
-
         // 生成JWT Token
         String token = jwtUtil.generateToken(user.getUserId(), "user");
 
-        /*
-         * // 发送登录日志
-         * LogMessage logMessage = new LogMessage(
-         * user.getUserId(),
-         * "LOGIN",
-         * ip,
-         * "{\"username\":\"" + user.getUsername() + "\"}" // 简单记录登录用户名
-         * );
-         * logProducer.sendRegisterLog(logMessage);
-         *
-         * log.info("用户登录成功: {}", user.getUsername());
-         */
+        // 发送用户登录日志到MQ
+        logProducer.sendUserLoginLog(user.getUserId(), user.getUsername(), ip);
+
+        log.info("用户登录成功: {}", user.getUsername());
         return token;
     }
 
     /**
      * 获取用户信息
      *
-     * @param userId 用户ID
+     * @param currentUserId 当前用户ID
+     * @param userId        目标用户ID
+     * @param ip            客户端IP
      * @return 用户信息
      */
     @Override
-    public UserResponseDto getUserInfo(Long currentUserId, Long userId) {
+    public UserResponseDto getUserInfo(Long currentUserId, Long userId, String ip) {
 
         // 查询目标用户
         User user = userMapper.selectById(userId);
@@ -220,6 +195,9 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         String targetRoleCode = permissionServiceClient.getUserRoleCode(userId);
         dto.setRoleCode(targetRoleCode);
 
+        // 发送查看用户信息日志到MQ
+        logProducer.sendUserInfoViewLog(currentUserId, user.getUsername(), userId, ip);
+
         return dto;
     }
 
@@ -227,11 +205,11 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
      * @description: 获取用户列表
      * @author: ajiang
      * @date: 2025/6/18 15:12
-     * @param: [pageParams, currentUserId]
+     * @param: [pageParams, currentUserId, ip]
      * @return: 分页用户列表
      **/
     @Override
-    public PageResult<User> getUserList(PageParams pageParams, Long currentUserId) {
+    public PageResult<User> getUserList(PageParams pageParams, Long currentUserId, String ip) {
         // 1. 查询当前用户的角色码
         String currentUserRole = permissionServiceClient.getUserRoleCode(currentUserId);
         log.info("当前用户角色: {}, userId={}", currentUserRole, currentUserId);
@@ -261,11 +239,11 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
             filteredUsers = allUsers.stream()
                     .filter(user -> {
                         if (currentUserId.equals(user.getUserId())) {
-                            return true;  // 允许查看自己
+                            return true; // 允许查看自己
                         }
                         try {
                             String roleCode = permissionServiceClient.getUserRoleCode(user.getUserId());
-                            return "user".equals(roleCode);  // 只能查看普通用户
+                            return "user".equals(roleCode); // 只能查看普通用户
                         } catch (Exception e) {
                             log.warn("远程获取用户角色失败，userId={}, 错误={}", user.getUserId(), e.getMessage());
                             return false;
@@ -284,9 +262,12 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         pageResult.setPage(userPage.getCurrent());
         pageResult.setPageSize(userPage.getSize());
 
+        // 发送查看用户列表日志到MQ
+        logProducer.sendUserListViewLog(currentUserId, currentUserRole, pageParams.getPageNo(),
+                pageParams.getPageSize(), filteredUsers.size(), ip);
+
         return pageResult;
     }
-
 
     /**
      * @description: 修改用户消息
@@ -304,7 +285,6 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
             throw new BusinessException("用户不存在");
         }
 
-
         // 获取当前用户角色
         String currentUserRoleCode = permissionServiceClient.getUserRoleCode(currentUserId);
         // 获取目标用户角色
@@ -315,47 +295,35 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
             throw new BusinessException("权限不足，无法修改该用户信息");
         }
 
+        // 记录修改前的信息，用于日志
+        Map<String, Object> changes = new HashMap<>();
+        if (!existingUser.getEmail().equals(user.getEmail())) {
+            Map<String, String> emailChange = new HashMap<>();
+            emailChange.put("old", existingUser.getEmail());
+            emailChange.put("new", user.getEmail());
+            changes.put("email", emailChange);
+        }
+        if (!existingUser.getPhone().equals(user.getPhone())) {
+            Map<String, String> phoneChange = new HashMap<>();
+            phoneChange.put("old", existingUser.getPhone());
+            phoneChange.put("new", user.getPhone());
+            changes.put("phone", phoneChange);
+        }
 
-        /*
-         * // 记录修改前的信息，用于日志
-         * Map<String, Object> detail = new HashMap<>();
-         * if (!existingUser.getEmail().equals(user.getEmail())) {
-         * Map<String, String> emailChange = new HashMap<>();
-         * emailChange.put("old", existingUser.getEmail());
-         * emailChange.put("new", user.getEmail());
-         * detail.put("email", emailChange);
-         * }
-         * if (!existingUser.getPhone().equals(user.getPhone())) {
-         * Map<String, String> phoneChange = new HashMap<>();
-         * phoneChange.put("old", existingUser.getPhone());
-         * phoneChange.put("new", user.getPhone());
-         * detail.put("phone", phoneChange);
-         * }
-         */
         // 更新用户信息（只允许修改邮箱和手机号）
         LambdaUpdateWrapper<User> updateWrapper = new LambdaUpdateWrapper<>();
         updateWrapper.eq(User::getUserId, userId)
                 .set(User::getEmail, user.getEmail())
                 .set(User::getPhone, user.getPhone());
-        if (userMapper.update(null, updateWrapper) > 0) {
-            return true;
+        boolean result = userMapper.update(null, updateWrapper) > 0;
+
+        // 发送操作日志
+        if (result && !changes.isEmpty()) {
+            logProducer.sendUserUpdateLog(currentUserId, existingUser.getUsername(), ip, changes);
         }
 
-        /*
-         * // 发送操作日志
-         * if (result && !detail.isEmpty()) {
-         * LogMessage logMessage = new LogMessage(
-         * currentUserId,
-         * "UPDATE_USER",
-         * ip,
-         * JSON.toJSONString(detail));
-         * logProducer.sendRegisterLog(logMessage);
-         * }
-         */
-
-        return false;
+        return result;
     }
-
 
     /**
      * 重置密码
@@ -377,13 +345,10 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
             throw new BusinessException("用户不存在");
         }
 
-
         // 获取当前用户角色
-        String currentUserRoleCode =
-                permissionServiceClient.getUserRoleCode(currentUserId);
+        String currentUserRoleCode = permissionServiceClient.getUserRoleCode(currentUserId);
         // 获取目标用户角色
-        String targetUserRoleCode =
-                permissionServiceClient.getUserRoleCode(targetUserId);
+        String targetUserRoleCode = permissionServiceClient.getUserRoleCode(targetUserId);
         // 权限校验
         if (!hasPermissionToModify(currentUserRoleCode, targetUserRoleCode, currentUserId, targetUserId)) {
             throw new BusinessException("权限不足，无法重置该用户密码");
@@ -393,23 +358,14 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         LambdaUpdateWrapper<User> updateWrapper = new LambdaUpdateWrapper<>();
         updateWrapper.eq(User::getUserId, targetUserId)
                 .set(User::getPassword, passwordEncoder.encode(passwordResetDto.getNewPassword()));
-        if (userMapper.update(null, updateWrapper) > 0) {
-            return true;
+        boolean result = userMapper.update(null, updateWrapper) > 0;
+
+        // 发送操作日志
+        if (result) {
+            logProducer.sendPasswordResetLog(currentUserId, targetUser.getUsername(), ip);
         }
 
-        /*
-         * // 发送操作日志
-         * if (result) {
-         * LogMessage logMessage = new LogMessage(
-         * currentUserId,
-         * "RESET_PASSWORD",
-         * ip,
-         * "{\"targetUserId\":\"" + targetUserId + "\"}" // 记录被重置密码的用户ID
-         * );
-         * logProducer.sendRegisterLog(logMessage);
-         * }
-         */
-        return false;
+        return result;
     }
 
     private boolean hasPermissionToModify(String currentUserRoleCode, String targetUserRoleCode,

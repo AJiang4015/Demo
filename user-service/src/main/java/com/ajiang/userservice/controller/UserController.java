@@ -72,7 +72,7 @@ public class UserController {
      */
     @PostMapping("/login")
     public ApiResponse<Map<String, String>> login(@RequestBody @Valid UserLoginDto loginDto,
-            HttpServletRequest request) {
+                                                  HttpServletRequest request) {
         log.info("用户登录请求: {}", loginDto.getUsername());
         String ip = getClientIp(request);
         String token = userService.login(loginDto, ip);
@@ -99,7 +99,8 @@ public class UserController {
     public ApiResponse<PageResult<User>> getUserList(PageParams pageParams, HttpServletRequest request) {
         log.info("获取用户列表请求: pageNo={}, pageSize={}", pageParams.getPageNo(), pageParams.getPageSize());
         Long currentUserId = getCurrentUserId(request);
-        PageResult<User> userList = userService.getUserList(pageParams, currentUserId);
+        String ip = getClientIp(request);
+        PageResult<User> userList = userService.getUserList(pageParams, currentUserId, ip);
         log.info("获取用户列表成功: 共{}条记录", userList.getCounts());
         return ApiResponse.success(userList);
     }
@@ -119,7 +120,8 @@ public class UserController {
     public ApiResponse<UserResponseDto> getUserInfo(@PathVariable Long userId, HttpServletRequest request) {
         log.info("获取用户信息请求: userId={}", userId);
         Long currentUserId = getCurrentUserId(request);
-        UserResponseDto userInfo = userService.getUserInfo(currentUserId, userId);
+        String ip = getClientIp(request);
+        UserResponseDto userInfo = userService.getUserInfo(currentUserId, userId, ip);
         log.info("获取用户信息成功: userId={}", userId);
         return ApiResponse.success(userInfo);
     }
@@ -175,7 +177,6 @@ public class UserController {
         log.info("重置密码{}: userId={}", result ? "成功" : "失败", passwordResetDto.getUserId());
         return ApiResponse.success(result);
     }
-
 
     /**
      * 获取当前用户ID

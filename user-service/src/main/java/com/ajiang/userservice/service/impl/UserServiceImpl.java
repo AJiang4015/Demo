@@ -13,11 +13,11 @@ import com.ajiang.userservice.feignclient.PermissionServiceClient;
 import com.ajiang.userservice.mapper.UserMapper;
 import com.ajiang.userservice.mq.LogProducer;
 import com.ajiang.userservice.service.UserService;
-import com.alibaba.fastjson.JSON;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import org.apache.seata.spring.annotation.GlobalTransactional;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -62,7 +62,9 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
      * @return: 用户ID
      **/
     @Override
+    @GlobalTransactional(timeoutMills = 300000, name = "user-register-tx", rollbackFor = Exception.class)
     public Long register(UserRegisterDto registerDto, String ip) {
+        SeataTransactionUtil.logTransactionStart("用户注册");
         log.info("用户注册: {}", registerDto.getUsername());
 
         // 检查用户名是否已存在
@@ -87,17 +89,20 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
 
         try {
             // RPC调用权限服务绑定默认角色
+            SeataTransactionUtil.logCurrentXid("调用权限服务绑定角色");
             permissionServiceClient.bindDefaultRole(userId);
             log.info("用户绑定默认角色成功: {}", userId);
         } catch (Exception e) {
             log.error("用户绑定默认角色失败: {}, 错误: {}", userId, e.getMessage());
+            SeataTransactionUtil.logTransactionFailure("用户注册", e);
             throw new BusinessException("绑定默认角色失败：" + e.getMessage());
         }
 
         // 发送用户注册日志到MQ
         logProducer.sendUserRegisterLog(userId, user.getUsername(), user.getEmail(), user.getPhone(), ip);
 
-        log.info("用户注册成功: {}", user.getUsername());
+        SeataTransactionUtil.logTransactionSuccess("用户注册");
+        log.info("用户注册成功: {}, 用户ID: {}", registerDto.getUsername(), userId);
         return userId;
     }
 

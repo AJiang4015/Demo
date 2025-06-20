@@ -25,6 +25,33 @@ spring:
       idle-timeout: 600000
       max-lifetime: 1800000
 
+# Seata 分布式事务配置（整合后的完整配置）
+seata:
+  application-id: permission-service
+  tx-service-group: permission-service-group
+  # 注册中心配置
+  registry:
+    type: nacos
+    nacos:
+      application: seata-server
+      server-addr: 192.168.127.102:8848
+      group: DEFAULT_GROUP
+      namespace: public
+      cluster: default
+      username: "nacos"
+      password: "nacos"
+      context-path: ""
+  # 配置中心配置
+  config:
+    type: nacos
+    nacos:
+      server-addr: 192.168.127.102:8848
+      namespace: public
+      group: SEATA_GROUP
+      username: "nacos"
+      password: "nacos"
+      data-id: seataServer.properties
+
 # MyBatis Plus 配置
 mybatis-plus:
   configuration:

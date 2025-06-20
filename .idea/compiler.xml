@@ -13,12 +13,16 @@
         <module name="logging-service" />
       </profile>
     </annotationProcessing>
+    <bytecodeTargetLevel>
+      <module name="springboot-seata" target="1.8" />
+    </bytecodeTargetLevel>
   </component>
   <component name="JavacSettings">
     <option name="ADDITIONAL_OPTIONS_OVERRIDE">
       <module name="common" options="-parameters" />
       <module name="logging-service" options="-parameters" />
       <module name="permission-service" options="-parameters" />
+      <module name="springboot-seata" options="-parameters" />
       <module name="user-service" options="-parameters" />
     </option>
   </component>

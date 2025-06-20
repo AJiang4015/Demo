@@ -13,19 +13,68 @@ spring:
         metadata:
           version: 1.0.0
           management.context-path: /actuator
-  datasource:
-    driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://localhost:3306/db_user0?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
-    username: root
-    password: 123456
-    hikari:
-      maximum-pool-size: 20
-      minimum-idle: 5
-      connection-timeout: 30000
-      idle-timeout: 600000
-      max-lifetime: 1800000
+  # ShardingSphere 分库分表配置
+  shardingsphere:
+    datasource:
+      names: ds0,ds1
+      ds0:
+        type: com.zaxxer.hikari.HikariDataSource
+        driver-class-name: com.mysql.cj.jdbc.Driver
+        jdbc-url: jdbc:mysql://localhost:3306/db_user0?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+        username: root
+        password: 123456
+        hikari:
+          maximum-pool-size: 20
+          minimum-idle: 5
+          connection-timeout: 30000
+          idle-timeout: 600000
+          max-lifetime: 1800000
+      ds1:
+        type: com.zaxxer.hikari.HikariDataSource
+        driver-class-name: com.mysql.cj.jdbc.Driver
+        jdbc-url: jdbc:mysql://localhost:3306/db_user1?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+        username: root
+        password: 123456
+        hikari:
+          maximum-pool-size: 20
+          minimum-idle: 5
+          connection-timeout: 30000
+          idle-timeout: 600000
+          max-lifetime: 1800000
+    rules:
+      sharding:
+        tables:
+          users:
+            # 修正为实际存在的表名（0-1后缀）
+            actual-data-nodes: ds$->{0..1}.users_$->{0..1}
+            table-strategy:
+              standard:
+                sharding-column: user_id
+                sharding-algorithm-name: users-table-inline
+            database-strategy:
+              standard:
+                sharding-column: user_id
+                sharding-algorithm-name: users-database-inline
+        sharding-algorithms:
+          users-database-inline:
+            type: INLINE
+            props:
+              # 分库规则：user_id % 4 后右移1位 (等价除以2取整)
+              algorithm-expression: ds$->{ (user_id % 4) >> 1 }
+          users-table-inline:
+            type: INLINE
+            props:
+              # 分表规则：user_id % 4 后取二进制最后一位
+              algorithm-expression: users_$->{ (user_id % 4) & 1 }
+        key-generators:
+          snowflake:
+            type: SNOWFLAKE
+            props:
+              worker-id: 1
+    props:
+      sql-show: true
 
-  # RabbitMQ 配置
+  # RabbitMQ 配置（保持不变）
   rabbitmq:
     host: 192.168.127.102
     port: 5672
@@ -38,11 +87,11 @@ spring:
     template:
       mandatory: true
 
-# Seata 分布式事务配置（整合后的完整配置）
+# Seata 配置（保持不变）
 seata:
+  enable-auto-data-source-proxy: false
   application-id: user-service
   tx-service-group: user-service-group
-  # 注册中心配置
   registry:
     type: nacos
     nacos:
@@ -54,7 +103,6 @@ seata:
       username: "nacos"
       password: "nacos"
       context-path: ""
-  # 配置中心配置
   config:
     type: nacos
     nacos:
@@ -65,7 +113,7 @@ seata:
       password: "nacos"
       data-id: seataServer.properties
 
-# MyBatis Plus 配置
+# MyBatis Plus 配置（保持不变）
 mybatis-plus:
   configuration:
     map-underscore-to-camel-case: true
@@ -78,14 +126,14 @@ mybatis-plus:
       logic-not-delete-value: 0
   mapper-locations: classpath*:mapper/*.xml
 
-# 日志配置
+# 日志配置（保持不变）
 logging:
   level:
     com.ajiang.userservice: debug
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{50} - %msg%n"
 
-# 管理端点配置
+# 管理端点配置（保持不变）
 management:
   endpoints:
     web:

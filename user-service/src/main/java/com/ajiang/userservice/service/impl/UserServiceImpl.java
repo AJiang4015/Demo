@@ -13,6 +13,7 @@ import com.ajiang.userservice.feignclient.PermissionServiceClient;
 import com.ajiang.userservice.mapper.UserMapper;
 import com.ajiang.userservice.mq.LogProducer;
 import com.ajiang.userservice.service.UserService;
+import com.ajiang.userservice.util.SeataTransactionUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -215,64 +216,85 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
      **/
     @Override
     public PageResult<User> getUserList(PageParams pageParams, Long currentUserId, String ip) {
-        // 1. 查询当前用户的角色码
+        // 1. 获取当前用户角色
         String currentUserRole = permissionServiceClient.getUserRoleCode(currentUserId);
         log.info("当前用户角色: {}, userId={}", currentUserRole, currentUserId);
 
-        // 2. 创建分页对象（分页 user 表）
+        // 2. 通过当前用户ID查出其所在的表（通过 user_id 精确查询，自动路由）
+        User currentUser = this.getById(currentUserId);
+        if (currentUser == null) {
+            throw new BusinessException("当前用户不存在");
+        }
+
+        // 3. 确定当前用户所在分表编号（与 ShardingSphere 分片规则一致）
+        int userTableIndex = (int) (currentUserId % 2); // 假设按 user_id % 2 分片
+
+        // 4. 构建分页参数
         Page<User> page = new Page<>(pageParams.getPageNo(), pageParams.getPageSize());
 
-        // 3. 构建查询条件
+        // 5. 构建分页查询条件
         LambdaQueryWrapper<User> wrapper = new LambdaQueryWrapper<>();
-        if ("user".equals(currentUserRole)) {
-            // 普通用户只能查自己
-            wrapper.eq(User::getUserId, currentUserId);
+
+        // 强制限定仅在“当前用户所在分表”进行分页
+        wrapper.apply("MOD(user_id, 2) = {0}", userTableIndex);
+
+        // 根据角色控制可见范围
+        switch (currentUserRole) {
+            case "user":
+                // 普通用户仅查看自己
+                wrapper.eq(User::getUserId, currentUserId);
+                break;
+            case "admin":
+                // 管理员：仅查看本分表中其他普通用户 + 自己
+                // 后处理过滤，仅保留 user 角色或自己
+                break;
+            case "super_admin":
+                // 超级管理员：仅查看本分表中的所有人（无需过滤）
+                break;
+            default:
+                throw new BusinessException("未知用户角色: " + currentUserRole);
         }
 
-        // 4. 执行分页查询
+        // 6. 执行分页查询
         Page<User> userPage = this.page(page, wrapper);
         List<User> allUsers = userPage.getRecords();
-        log.debug("分页查询结果: 共 {} 条", allUsers.size());
 
-        // 5. 优化后的过滤逻辑
+        // 7. 管理员角色需要进行后置过滤
         List<User> filteredUsers;
-        if ("super_admin".equals(currentUserRole)) {
-            // 超管直接返回所有查询结果
-            filteredUsers = allUsers;
-        } else if ("admin".equals(currentUserRole)) {
-            // 管理员过滤：只能查看普通用户或自己
+        if ("admin".equals(currentUserRole)) {
             filteredUsers = allUsers.stream()
                     .filter(user -> {
-                        if (currentUserId.equals(user.getUserId())) {
-                            return true; // 允许查看自己
+                        // 自己总能查看
+                        if (user.getUserId().equals(currentUserId)) {
+                            return true;
                         }
                         try {
-                            String roleCode = permissionServiceClient.getUserRoleCode(user.getUserId());
-                            return "user".equals(roleCode); // 只能查看普通用户
+                            // 只允许查看普通用户
+                            String role = permissionServiceClient.getUserRoleCode(user.getUserId());
+                            return "user".equals(role);
                         } catch (Exception e) {
-                            log.warn("远程获取用户角色失败，userId={}, 错误={}", user.getUserId(), e.getMessage());
+                            log.warn("获取用户 {} 角色失败: {}", user.getUserId(), e.getMessage());
                             return false;
                         }
-                    })
-                    .collect(Collectors.toList());
+                    }).collect(Collectors.toList());
         } else {
-            // 普通用户直接使用查询结果（已限定只能查自己）
-            filteredUsers = allUsers;
+            filteredUsers = allUsers; // 普通用户和超级管理员直接用原数据
         }
 
-        // 6. 构建分页响应结果
-        PageResult<User> pageResult = new PageResult<>();
-        pageResult.setItems(filteredUsers);
-        pageResult.setCounts(filteredUsers.size());
-        pageResult.setPage(userPage.getCurrent());
-        pageResult.setPageSize(userPage.getSize());
+        // 8. 构建分页响应结果
+        PageResult<User> result = new PageResult<>();
+        result.setItems(filteredUsers);
+        result.setCounts(filteredUsers.size());
+        result.setPage(userPage.getCurrent());
+        result.setPageSize(userPage.getSize());
 
-        // 发送查看用户列表日志到MQ
+        // 9. 记录日志
         logProducer.sendUserListViewLog(currentUserId, currentUserRole, pageParams.getPageNo(),
                 pageParams.getPageSize(), filteredUsers.size(), ip);
 
-        return pageResult;
+        return result;
     }
+
 
     /**
      * @description: 修改用户消息

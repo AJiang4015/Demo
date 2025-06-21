@@ -20,6 +20,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 /**
+ * AI生成
  * 日志消息服务
  * 负责发送操作日志消息到RabbitMQ
  * 实现生产者可靠性：消息确认、持久化、重试机制
@@ -84,24 +85,35 @@ public class LogProducer {
         rabbitTemplate.setConfirmCallback((correlationData, ack, cause) -> {
             if (correlationData != null) {
                 String messageId = correlationData.getId();
+                PendingMessage pendingMessage = pendingMessages.get(messageId);
+
                 if (ack) {
                     // 消息成功到达交换机，移除待确认消息
                     pendingMessages.remove(messageId);
-                    log.info("消息确认成功: messageId={}", messageId);
+                    log.info("[消息确认] 消息成功到达交换机: messageId={}, pendingCount={}",
+                            messageId, pendingMessages.size());
                 } else {
                     // 消息未到达交换机，记录失败原因并重试
-                    log.error("消息确认失败: messageId={}, cause={}", messageId, cause);
+                    int retryCount = pendingMessage != null ? pendingMessage.getRetryCount() : 0;
+                    log.error("[消息确认] 消息未到达交换机: messageId={}, cause={}, currentRetryCount={}",
+                            messageId, cause, retryCount);
                     retryMessage(messageId);
                 }
+            } else {
+                log.warn("[消息确认] 收到空的关联数据，无法处理确认回调");
             }
         });
 
         // 设置消息返回回调（当消息无法路由到队列时触发）
         rabbitTemplate.setReturnsCallback(returned -> {
             String messageId = returned.getMessage().getMessageProperties().getMessageId();
-            log.error("消息路由失败: messageId={}, replyCode={}, replyText={}, exchange={}, routingKey={}",
+            PendingMessage pendingMessage = pendingMessages.get(messageId);
+            int retryCount = pendingMessage != null ? pendingMessage.getRetryCount() : 0;
+
+            log.error(
+                    "[消息路由] 消息无法路由到队列: messageId={}, replyCode={}, replyText={}, exchange={}, routingKey={}, currentRetryCount={}",
                     messageId, returned.getReplyCode(), returned.getReplyText(),
-                    returned.getExchange(), returned.getRoutingKey());
+                    returned.getExchange(), returned.getRoutingKey(), retryCount);
             retryMessage(messageId);
         });
 
@@ -116,24 +128,35 @@ public class LogProducer {
         PendingMessage pendingMessage = pendingMessages.get(messageId);
         if (pendingMessage != null) {
             pendingMessage.incrementRetryCount();
+            int currentRetryCount = pendingMessage.getRetryCount();
+            int maxRetryCount = RabbitMQConfig.MAX_RETRY_COUNT;
 
-            if (pendingMessage.getRetryCount() <= RabbitMQConfig.MAX_RETRY_COUNT) {
+            log.info("[消息重试] 开始重试消息: messageId={}, currentRetryCount={}, maxRetryCount={}, pendingCount={}",
+                    messageId, currentRetryCount, maxRetryCount, pendingMessages.size());
+
+            if (currentRetryCount <= maxRetryCount) {
                 // 延迟重试
                 retryExecutor.schedule(() -> {
                     try {
-                        log.info("重试发送消息: messageId={}, retryCount={}", messageId, pendingMessage.getRetryCount());
+                        log.info("[消息重试] 执行重试发送: messageId={}, retryCount={}", messageId, currentRetryCount);
                         sendMessageWithConfirm(pendingMessage.getMessageContent(), pendingMessage.getOriginalData(),
                                 messageId);
                     } catch (Exception e) {
-                        log.error("重试发送消息失败: messageId={}, error={}", messageId, e.getMessage());
+                        log.error("[消息重试] 重试发送失败: messageId={}, retryCount={}, error={}",
+                                messageId, currentRetryCount, e.getMessage(), e);
                     }
                 }, 5, TimeUnit.SECONDS);
             } else {
                 // 超过最大重试次数，发送到死信队列
-                log.error("消息重试次数超限，发送到死信队列: messageId={}", messageId);
+                log.error("[消息重试] 重试次数超限，发送到死信队列: messageId={}, finalRetryCount={}, maxRetryCount={}",
+                        messageId, currentRetryCount, maxRetryCount);
                 sendToDeadLetterQueue(pendingMessage);
                 pendingMessages.remove(messageId);
+                log.info("[消息重试] 已移除超限消息: messageId={}, remainingPendingCount={}",
+                        messageId, pendingMessages.size());
             }
+        } else {
+            log.warn("[消息重试] 未找到待重试消息: messageId={}", messageId);
         }
     }
 
@@ -142,36 +165,64 @@ public class LogProducer {
      */
     private void cleanupExpiredMessages() {
         LocalDateTime expireTime = LocalDateTime.now().minusMinutes(10); // 10分钟超时
+        int beforeCount = pendingMessages.size();
+
+        log.debug("[消息清理] 开始清理过期消息: currentPendingCount={}, expireTime={}",
+                beforeCount, expireTime);
+
         pendingMessages.entrySet().removeIf(entry -> {
             if (entry.getValue().getSendTime().isBefore(expireTime)) {
-                log.warn("清理过期消息: messageId={}", entry.getKey());
+                log.warn("[消息清理] 清理过期消息: messageId={}, sendTime={}, retryCount={}",
+                        entry.getKey(), entry.getValue().getSendTime(), entry.getValue().getRetryCount());
                 return true;
             }
             return false;
         });
+
+        int afterCount = pendingMessages.size();
+        int cleanedCount = beforeCount - afterCount;
+
+        if (cleanedCount > 0) {
+            log.info("[消息清理] 清理完成: cleanedCount={}, remainingCount={}", cleanedCount, afterCount);
+        } else {
+            log.debug("[消息清理] 无过期消息需要清理: pendingCount={}", afterCount);
+        }
     }
 
     /**
      * 发送消息到死信队列
      */
     private void sendToDeadLetterQueue(PendingMessage pendingMessage) {
+        long startTime = System.currentTimeMillis();
+
         try {
+            log.info("[死信发送] 开始发送消息到死信队列: retryCount={}, originalSendTime={}",
+                    pendingMessage.getRetryCount(), pendingMessage.getSendTime());
+
             // 添加失败信息到消息中
             Map<String, Object> deadLetterData = new HashMap<>(pendingMessage.getOriginalData());
             deadLetterData.put("failureReason", "超过最大重试次数");
             deadLetterData.put("retryCount", pendingMessage.getRetryCount());
             deadLetterData.put("originalSendTime", pendingMessage.getSendTime());
+            deadLetterData.put("deadLetterTime", LocalDateTime.now());
 
             String deadLetterMessage = JSON.toJSONString(deadLetterData);
+
+            log.debug("[死信发送] 死信消息内容: messageSize={}bytes", deadLetterMessage.length());
 
             rabbitTemplate.convertAndSend(
                     RabbitMQConfig.DEAD_LETTER_EXCHANGE,
                     RabbitMQConfig.DEAD_LETTER_ROUTING_KEY,
                     deadLetterMessage);
 
-            log.info("消息已发送到死信队列: {}", deadLetterMessage);
+            long sendTime = System.currentTimeMillis() - startTime;
+            log.info("[死信发送] 消息已发送到死信队列: exchange={}, routingKey={}, 发送耗时={}ms",
+                    RabbitMQConfig.DEAD_LETTER_EXCHANGE, RabbitMQConfig.DEAD_LETTER_ROUTING_KEY, sendTime);
+            log.debug("[死信发送] 死信消息详情: {}", deadLetterMessage);
+
         } catch (Exception e) {
-            log.error("发送消息到死信队列失败: {}", e.getMessage(), e);
+            long totalTime = System.currentTimeMillis() - startTime;
+            log.error("[死信发送] 发送消息到死信队列失败: error={}, 耗时={}ms", e.getMessage(), totalTime, e);
         }
     }
 
@@ -179,7 +230,12 @@ public class LogProducer {
      * 带确认机制的消息发送
      */
     private void sendMessageWithConfirm(String messageContent, Map<String, Object> originalData, String messageId) {
+        long startTime = System.currentTimeMillis();
+
         try {
+            log.debug("[消息发送] 开始发送消息: messageId={}, messageSize={}bytes, pendingCount={}",
+                    messageId, messageContent.length(), pendingMessages.size());
+
             // 创建关联数据用于确认回调
             CorrelationData correlationData = new CorrelationData(messageId);
 
@@ -199,8 +255,15 @@ public class LogProducer {
                     message,
                     correlationData);
 
+            long sendTime = System.currentTimeMillis() - startTime;
+            log.info("[消息发送] 消息发送完成: messageId={}, exchange={}, routingKey={}, 发送耗时={}ms",
+                    messageId, RabbitMQConfig.OPERATION_LOG_EXCHANGE,
+                    RabbitMQConfig.OPERATION_LOG_ROUTING_KEY, sendTime);
+
         } catch (Exception e) {
-            log.error("发送消息失败: messageId={}, error={}", messageId, e.getMessage(), e);
+            long totalTime = System.currentTimeMillis() - startTime;
+            log.error("[消息发送] 发送消息失败: messageId={}, error={}, 耗时={}ms",
+                    messageId, e.getMessage(), totalTime, e);
             throw e;
         }
     }
@@ -214,8 +277,16 @@ public class LogProducer {
      * @param detail 操作详情
      */
     public void sendOperationLog(Long userId, String action, String ip, Map<String, Object> detail) {
+        long startTime = System.currentTimeMillis();
+        String messageId = UUID.randomUUID().toString();
+
         try {
+            log.info("[操作日志] 开始发送操作日志: messageId={}, userId={}, action={}, ip={}",
+                    messageId, userId, action, ip);
+            log.debug("[操作日志] 操作详情: {}", detail);
+
             // 构建日志消息
+            long buildStartTime = System.currentTimeMillis();
             Map<String, Object> logMessage = new HashMap<>();
             logMessage.put("userId", userId);
             logMessage.put("action", action);
@@ -226,21 +297,27 @@ public class LogProducer {
 
             // 转换为JSON字符串
             String messageContent = JSON.toJSONString(logMessage);
+            long buildTime = System.currentTimeMillis() - buildStartTime;
 
-            // 生成唯一消息ID
-            String messageId = UUID.randomUUID().toString();
+            log.debug("[操作日志] 消息构建完成: messageId={}, messageSize={}bytes, 构建耗时={}ms",
+                    messageId, messageContent.length(), buildTime);
 
             // 存储待确认消息
             pendingMessages.put(messageId, new PendingMessage(messageContent, logMessage));
+            log.debug("[操作日志] 消息已加入待确认队列: messageId={}, pendingCount={}",
+                    messageId, pendingMessages.size());
 
             // 发送消息
             sendMessageWithConfirm(messageContent, logMessage, messageId);
 
-            log.info("操作日志消息发送: messageId={}, userId={}, action={}, ip={}", messageId, userId, action, ip);
+            long totalTime = System.currentTimeMillis() - startTime;
+            log.info("[操作日志] 操作日志发送完成: messageId={}, userId={}, action={}, ip={}, 总耗时={}ms",
+                    messageId, userId, action, ip, totalTime);
 
         } catch (Exception e) {
-            log.error("操作日志消息发送失败: userId={}, action={}, ip={}, 错误: {}",
-                    userId, action, ip, e.getMessage(), e);
+            long totalTime = System.currentTimeMillis() - startTime;
+            log.error("[操作日志] 操作日志发送失败: messageId={}, userId={}, action={}, ip={}, error={}, 总耗时={}ms",
+                    messageId, userId, action, ip, e.getMessage(), totalTime, e);
             // 可以考虑将失败的消息存储到本地文件或数据库中，作为最后的保障
         }
     }

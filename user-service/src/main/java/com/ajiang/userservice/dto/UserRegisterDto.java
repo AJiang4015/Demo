@@ -1,16 +1,11 @@
 package com.ajiang.userservice.dto;
 
 import lombok.Data;
-
 import javax.validation.constraints.Email;
 import javax.validation.constraints.NotBlank;
 import javax.validation.constraints.Pattern;
 import javax.validation.constraints.Size;
 
-/**
- * 用户注册数据传输对象
- * 用于接收用户注册请求的数据
- */
 @Data
 public class UserRegisterDto {
 

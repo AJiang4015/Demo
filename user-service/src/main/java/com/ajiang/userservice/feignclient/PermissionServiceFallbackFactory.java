@@ -4,11 +4,17 @@ import com.ajiang.common.model.PageResult;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cloud.openfeign.FallbackFactory;
 import org.springframework.stereotype.Component;
-
 import java.util.Collections;
-import java.util.List;
-import java.util.Map;
 
+
+/**
+ * AI生成
+ * @description:
+ * @author: ajiang
+ * @date: 2025/6/21 17:41
+ * @param:
+ * @return:
+ **/
 @Slf4j
 @Component
 public class PermissionServiceFallbackFactory implements FallbackFactory<PermissionServiceClient> {

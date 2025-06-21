@@ -23,24 +23,11 @@ public class RabbitMQConfig {
     // ==================== 死信队列相关配置 ====================
     // 死信交换机
     public static final String DEAD_LETTER_EXCHANGE = "dlx.exchange";
-    public static final String DLX_EXCHANGE = DEAD_LETTER_EXCHANGE; // 别名，保持兼容性
     // 死信队列
     public static final String DEAD_LETTER_QUEUE = "dlx.queue";
-    public static final String DLX_QUEUE = DEAD_LETTER_QUEUE; // 别名，保持兼容性
     // 死信路由键
     public static final String DEAD_LETTER_ROUTING_KEY = "dlx.operation.log";
-    public static final String DLX_ROUTING_KEY = DEAD_LETTER_ROUTING_KEY; // 别名，保持兼容性
 
-    // ==================== 延迟重试队列相关配置 ====================
-    // 延迟重试交换机
-    public static final String RETRY_EXCHANGE = "retry.exchange";
-    // 延迟重试队列
-    public static final String RETRY_QUEUE = "retry.operation.log.queue";
-    // 延迟重试路由键
-    public static final String RETRY_ROUTING_KEY = "retry.operation.log";
-
-    // 重试延迟时间（毫秒）
-    public static final int RETRY_DELAY_MS = 30000; // 30秒
     // 最大重试次数
     public static final int MAX_RETRY_COUNT = 3;
 
@@ -114,40 +101,4 @@ public class RabbitMQConfig {
                 .with(DEAD_LETTER_ROUTING_KEY);
     }
 
-    // ==================== 延迟重试队列配置 ====================
-
-    /**
-     * 声明延迟重试交换机
-     */
-    @Bean
-    public DirectExchange retryExchange() {
-        return ExchangeBuilder
-                .directExchange(RETRY_EXCHANGE)
-                .durable(true)
-                .build();
-    }
-
-    /**
-     * 声明延迟重试队列（TTL队列，消息过期后进入死信队列重新处理）
-     */
-    @Bean
-    public Queue retryQueue() {
-        return QueueBuilder
-                .durable(RETRY_QUEUE)
-                .withArgument("x-message-ttl", RETRY_DELAY_MS)
-                .withArgument("x-dead-letter-exchange", OPERATION_LOG_EXCHANGE)
-                .withArgument("x-dead-letter-routing-key", OPERATION_LOG_ROUTING_KEY)
-                .build();
-    }
-
-    /**
-     * 绑定延迟重试队列和交换机
-     */
-    @Bean
-    public Binding retryBinding() {
-        return BindingBuilder
-                .bind(retryQueue())
-                .to(retryExchange())
-                .with(RETRY_ROUTING_KEY);
-    }
 }

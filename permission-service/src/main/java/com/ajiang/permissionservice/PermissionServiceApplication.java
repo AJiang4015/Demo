@@ -14,7 +14,7 @@ import org.springframework.transaction.annotation.EnableTransactionManagement;
  * @version 1.0
  * @since 2025-06-17
  */
-@SpringBootApplication
+@SpringBootApplication(scanBasePackages = { "com.ajiang.permissionservice", "com.ajiang.common" })
 @EnableDiscoveryClient
 @EnableTransactionManagement
 @MapperScan("com.ajiang.permissionservice.mapper")

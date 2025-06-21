@@ -36,14 +36,13 @@ spring:
     connection-timeout: 15000
     listener:
       simple:
-        acknowledge-mode: manual  # 改为手动确认模式
+        acknowledge-mode: manual  # 使用手动确认模式
         concurrency: 5
         max-concurrency: 20
         prefetch: 10
-        # 禁用Spring Boot自带的重试机制，使用自定义重试逻辑
+        # 禁用Spring Boot自带的重试机制，使用手动重试
         retry:
           enabled: false
-          max-attempts: 1
 
 # MyBatis-Plus配置
 mybatis-plus:

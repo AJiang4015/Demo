@@ -85,7 +85,7 @@ spring:
         min-idle: 5
         max-wait: 3000ms
 
-  # RabbitMQ 配置（保持不变）
+  # RabbitMQ 配置
   rabbitmq:
     host: 192.168.127.102
     port: 5672
@@ -93,12 +93,12 @@ spring:
     password: admin
     virtual-host: /
     connection-timeout: 15000
-    publisher-confirm-type: correlated
-    publisher-returns: true
+    publisher-confirm-type: correlated  # 开启发送确认
+    publisher-returns: true   # 开启失败返回
     template:
-      mandatory: true
+      mandatory: true   #强制路由
 
-# Seata 配置（保持不变）
+# Seata 配置
 seata:
   enable-auto-data-source-proxy: false
   application-id: user-service
@@ -124,7 +124,7 @@ seata:
       password: "nacos"
       data-id: seataServer.properties
 
-# MyBatis Plus 配置（保持不变）
+# MyBatis Plus 配置
 mybatis-plus:
   configuration:
     map-underscore-to-camel-case: true
@@ -137,14 +137,14 @@ mybatis-plus:
       logic-not-delete-value: 0
   mapper-locations: classpath*:mapper/*.xml
 
-# 日志配置（保持不变）
+# 日志配置
 logging:
   level:
     com.ajiang.userservice: debug
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{50} - %msg%n"
 
-# 管理端点配置（保持不变）
+# 管理端点配置
 management:
   endpoints:
     web:

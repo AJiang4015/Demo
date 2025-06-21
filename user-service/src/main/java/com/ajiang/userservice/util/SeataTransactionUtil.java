@@ -5,6 +5,7 @@ import org.apache.seata.core.context.RootContext;
 import org.springframework.stereotype.Component;
 
 /**
+ * AI
  * Seata分布式事务工具类
  * 用于监控和记录分布式事务状态
  *

@@ -25,11 +25,10 @@ spring:
       idle-timeout: 600000
       max-lifetime: 1800000
 
-# Seata 分布式事务配置（整合后的完整配置）
+# Seata 分布式事务配置
 seata:
   application-id: permission-service
   tx-service-group: permission-service-group
-  # 注册中心配置
   registry:
     type: nacos
     nacos:
@@ -41,7 +40,6 @@ seata:
       username: "nacos"
       password: "nacos"
       context-path: ""
-  # 配置中心配置
   config:
     type: nacos
     nacos:

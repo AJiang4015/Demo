@@ -45,61 +45,99 @@ public class RoleServiceImpl extends ServiceImpl<RoleMapper, Role> implements Ro
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void bindDefaultRole(Long userId) {
-
-        // 检查用户是否已经有角色绑定
-        LambdaQueryWrapper<UserRole> queryWrapper = new LambdaQueryWrapper<>();
-        queryWrapper.eq(UserRole::getUserId, userId);
-        if (userRoleMapper.selectCount(queryWrapper) > 0) {
-            log.info("用户已存在角色绑定");
-            return;
-        }
+        long startTime = System.currentTimeMillis();
+        log.info("[业务开始] 绑定默认角色: userId={}", userId);
 
         try {
+            // 检查用户是否已经有角色绑定
+            long queryStartTime = System.currentTimeMillis();
+            LambdaQueryWrapper<UserRole> queryWrapper = new LambdaQueryWrapper<>();
+            queryWrapper.eq(UserRole::getUserId, userId);
+            long existingCount = userRoleMapper.selectCount(queryWrapper);
+            long queryTime = System.currentTimeMillis() - queryStartTime;
+            log.debug("[数据库查询] 检查用户角色绑定: userId={}, count={}, 耗时={}ms",
+                    userId, existingCount, queryTime);
+
+            if (existingCount > 0) {
+                long totalTime = System.currentTimeMillis() - startTime;
+                log.info("[业务结束] 用户已存在角色绑定: userId={}, 总耗时={}ms", userId, totalTime);
+                return;
+            }
+
+            // 插入默认角色绑定
+            long insertStartTime = System.currentTimeMillis();
             UserRole userRole = UserRole.builder()
                     .userId(userId)
-                    .roleId(2)
+                    .roleId(2) // 默认普通用户角色
                     .build();
-            log.debug("插入前 userRole.id={}", userRole.getId());
-            if (userRoleMapper.insert(userRole) <= 0) {
-                log.error("绑定默认角色失败: userId={}, roleCode={}", userId, "user");
+
+            int insertResult = userRoleMapper.insert(userRole);
+            long insertTime = System.currentTimeMillis() - insertStartTime;
+
+            if (insertResult <= 0) {
+                log.error("[数据库操作] 绑定默认角色失败: userId={}, roleCode=user, insertResult={}",
+                        userId, insertResult);
                 throw new BusinessException("绑定默认角色失败");
             }
 
-            log.info("绑定默认角色成功: userId={}, roleId={}, roleCode={}", userId, userRole.getRoleId(), "user");
-        } catch (Exception e) {
+            long totalTime = System.currentTimeMillis() - startTime;
+            log.info("[业务结束] 绑定默认角色成功: userId={}, roleId={}, roleCode=user, 插入耗时={}ms, 总耗时={}ms",
+                    userId, userRole.getRoleId(), insertTime, totalTime);
 
-            log.error("绑定默认角色失败: userId={}, 错误: {}", userId, e.getMessage(), e);
+        } catch (Exception e) {
+            long totalTime = System.currentTimeMillis() - startTime;
+            log.error("[业务异常] 绑定默认角色失败: userId={}, error={}, 总耗时={}ms",
+                    userId, e.getMessage(), totalTime, e);
             throw new BusinessException("绑定默认角色失败: " + e.getMessage());
         }
     }
 
     @Override
     public String getUserRoleCode(Long userId) {
+        long startTime = System.currentTimeMillis();
+        log.debug("[业务开始] 查询用户角色码: userId={}", userId);
 
         try {
             // 查询用户角色关系
+            long userRoleQueryStart = System.currentTimeMillis();
             LambdaQueryWrapper<UserRole> queryWrapper = new LambdaQueryWrapper<>();
             queryWrapper.select(UserRole::getRoleId)
                     .eq(UserRole::getUserId, userId);
             UserRole userRole = userRoleMapper.selectOne(queryWrapper);
+            long userRoleQueryTime = System.currentTimeMillis() - userRoleQueryStart;
+
+            log.debug("[数据库查询] 用户角色关系: userId={}, roleId={}, 耗时={}ms",
+                    userId, userRole != null ? userRole.getRoleId() : null, userRoleQueryTime);
 
             if (userRole == null) {
-                log.warn("用户未绑定任何角色: userId={}", userId);
+                long totalTime = System.currentTimeMillis() - startTime;
+                log.warn("[业务结束] 用户未绑定任何角色，返回默认角色: userId={}, defaultRole=user, 总耗时={}ms",
+                        userId, totalTime);
                 return "user";
             }
 
             // 查询角色信息
+            long roleQueryStart = System.currentTimeMillis();
             Role role = roleMapper.selectById(userRole.getRoleId());
+            long roleQueryTime = System.currentTimeMillis() - roleQueryStart;
+
+            log.debug("[数据库查询] 角色信息: roleId={}, roleCode={}, 耗时={}ms",
+                    userRole.getRoleId(), role != null ? role.getRoleCode() : null, roleQueryTime);
+
             if (role == null) {
-                log.error("角色信息不存在: roleId={}", userRole.getRoleId());
+                log.error("[数据异常] 角色信息不存在: userId={}, roleId={}", userId, userRole.getRoleId());
                 throw new BusinessException("角色信息不存在");
             }
 
-            log.debug("查询用户角色码成功: userId={}, roleCode={}", userId, role.getRoleCode());
+            long totalTime = System.currentTimeMillis() - startTime;
+            log.debug("[业务结束] 查询用户角色码成功: userId={}, roleCode={}, 总耗时={}ms",
+                    userId, role.getRoleCode(), totalTime);
             return role.getRoleCode();
 
         } catch (Exception e) {
-            log.error("查询用户角色码失败: userId={}, 错误: {}", userId, e.getMessage(), e);
+            long totalTime = System.currentTimeMillis() - startTime;
+            log.error("[业务异常] 查询用户角色码失败: userId={}, error={}, 总耗时={}ms",
+                    userId, e.getMessage(), totalTime, e);
             throw new BusinessException("查询用户角色码失败: " + e.getMessage());
         }
     }
@@ -127,48 +165,100 @@ public class RoleServiceImpl extends ServiceImpl<RoleMapper, Role> implements Ro
     }
 
     private void updateUserRoleToTarget(Long userId, int roleId) {
+        long startTime = System.currentTimeMillis();
+        log.debug("[数据库操作] 更新用户角色: userId={}, targetRoleId={}", userId, roleId);
+
         LambdaUpdateWrapper<UserRole> updateWrapper = new LambdaUpdateWrapper<>();
         updateWrapper.set(UserRole::getRoleId, roleId)
                 .eq(UserRole::getUserId, userId);
 
         int result = userRoleMapper.update(null, updateWrapper);
+        long updateTime = System.currentTimeMillis() - startTime;
+
         if (result <= 0) {
+            log.error("[数据库操作] 更新用户角色失败: userId={}, targetRoleId={}, updateResult={}, 耗时={}ms",
+                    userId, roleId, result, updateTime);
             throw new BusinessException("更新用户角色失败");
         }
+
+        log.debug("[数据库操作] 更新用户角色成功: userId={}, targetRoleId={}, 耗时={}ms",
+                userId, roleId, updateTime);
     }
 
     @Override
     public void upgradeToAdmin(Long currentUserId, String currentUserRole, Long targetUserId) {
-        log.info("升级用户为管理员: currentUserId={}, currentUserRole={}, targetUserId={}",
+        long startTime = System.currentTimeMillis();
+        log.info("[业务开始] 升级用户为管理员: currentUserId={}, currentUserRole={}, targetUserId={}",
                 currentUserId, currentUserRole, targetUserId);
 
-        // 1. 验证当前用户是否为超级管理员
-        validateSuperAdminPermission(currentUserId, currentUserRole);
+        try {
+            // 1. 验证当前用户是否为超级管理员
+            long permissionCheckStart = System.currentTimeMillis();
+            validateSuperAdminPermission(currentUserId, currentUserRole);
+            long permissionCheckTime = System.currentTimeMillis() - permissionCheckStart;
+            log.debug("[权限校验] 超级管理员权限验证通过: currentUserId={}, 耗时={}ms",
+                    currentUserId, permissionCheckTime);
 
-        // 2. 验证目标用户当前角色是否为普通用户
-        validateTargetUserRoleForUpgrade(targetUserId);
+            // 2. 验证目标用户当前角色是否为普通用户
+            long roleCheckStart = System.currentTimeMillis();
+            validateTargetUserRoleForUpgrade(targetUserId);
+            long roleCheckTime = System.currentTimeMillis() - roleCheckStart;
+            log.debug("[角色校验] 目标用户角色验证通过: targetUserId={}, 耗时={}ms",
+                    targetUserId, roleCheckTime);
 
-        // 3. 执行升级操作
-        changeUserRole(targetUserId, 3);
+            // 3. 执行升级操作
+            long upgradeStart = System.currentTimeMillis();
+            changeUserRole(targetUserId, 3);
+            long upgradeTime = System.currentTimeMillis() - upgradeStart;
 
-        log.info("升级用户为管理员成功: targetUserId={}", targetUserId);
+            long totalTime = System.currentTimeMillis() - startTime;
+            log.info("[业务结束] 升级用户为管理员成功: targetUserId={}, 升级耗时={}ms, 总耗时={}ms",
+                    targetUserId, upgradeTime, totalTime);
+
+        } catch (Exception e) {
+            long totalTime = System.currentTimeMillis() - startTime;
+            log.error("[业务异常] 升级用户为管理员失败: targetUserId={}, error={}, 总耗时={}ms",
+                    targetUserId, e.getMessage(), totalTime, e);
+            throw e;
+        }
     }
 
     @Override
     public void downgradeToUser(Long currentUserId, String currentUserRole, Long targetUserId) {
-        log.info("降级用户为普通用户: currentUserId={}, currentUserRole={}, targetUserId={}",
+        long startTime = System.currentTimeMillis();
+        log.info("[业务开始] 降级用户为普通用户: currentUserId={}, currentUserRole={}, targetUserId={}",
                 currentUserId, currentUserRole, targetUserId);
 
-        // 1. 验证当前用户是否为超级管理员
-        validateSuperAdminPermission(currentUserId, currentUserRole);
+        try {
+            // 1. 验证当前用户是否为超级管理员
+            long permissionCheckStart = System.currentTimeMillis();
+            validateSuperAdminPermission(currentUserId, currentUserRole);
+            long permissionCheckTime = System.currentTimeMillis() - permissionCheckStart;
+            log.debug("[权限校验] 超级管理员权限验证通过: currentUserId={}, 耗时={}ms",
+                    currentUserId, permissionCheckTime);
 
-        // 2. 验证目标用户当前角色是否为管理员
-        validateTargetUserRoleForDowngrade(targetUserId);
+            // 2. 验证目标用户当前角色是否为管理员
+            long roleCheckStart = System.currentTimeMillis();
+            validateTargetUserRoleForDowngrade(targetUserId);
+            long roleCheckTime = System.currentTimeMillis() - roleCheckStart;
+            log.debug("[角色校验] 目标用户角色验证通过: targetUserId={}, 耗时={}ms",
+                    targetUserId, roleCheckTime);
 
-        // 3. 执行降级操作
-        changeUserRole(targetUserId, 2);
+            // 3. 执行降级操作
+            long downgradeStart = System.currentTimeMillis();
+            changeUserRole(targetUserId, 2);
+            long downgradeTime = System.currentTimeMillis() - downgradeStart;
 
-        log.info("降级用户为普通用户成功: targetUserId={}", targetUserId);
+            long totalTime = System.currentTimeMillis() - startTime;
+            log.info("[业务结束] 降级用户为普通用户成功: targetUserId={}, 降级耗时={}ms, 总耗时={}ms",
+                    targetUserId, downgradeTime, totalTime);
+
+        } catch (Exception e) {
+            long totalTime = System.currentTimeMillis() - startTime;
+            log.error("[业务异常] 降级用户为普通用户失败: targetUserId={}, error={}, 总耗时={}ms",
+                    targetUserId, e.getMessage(), totalTime, e);
+            throw e;
+        }
     }
 
     @Override

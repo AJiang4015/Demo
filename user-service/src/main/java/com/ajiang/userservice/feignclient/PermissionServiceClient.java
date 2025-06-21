@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
+ * AI生成
  * 权限服务RPC接口客户端
  * 提供用户角色管理相关的远程调用功能
  */

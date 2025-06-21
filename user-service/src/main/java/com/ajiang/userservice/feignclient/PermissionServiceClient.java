@@ -1,10 +1,8 @@
 package com.ajiang.userservice.feignclient;
 
+import com.ajiang.common.model.PageResult;
 import org.springframework.cloud.openfeign.FeignClient;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Map;
@@ -55,4 +53,20 @@ public interface PermissionServiceClient {
      */
     @PostMapping("/role/downgrade/{userId}")
     void downgradeToUser(@PathVariable("userId") Long userId);
+
+    /**
+     * 分页查询可见用户ID列表
+     *
+     * @param currentUserId 当前用户ID
+     * @param currentUserRole 当前用户角色
+     * @param pageNo 页码
+     * @param pageSize 每页大小
+     * @return 分页结果（只包含用户ID）
+     */
+    @PostMapping("/role/visible-users")
+    PageResult<Long> getVisibleUserIds(
+            @RequestParam Long currentUserId,
+            @RequestParam String currentUserRole,
+            @RequestParam int pageNo,
+            @RequestParam int pageSize);
 }

@@ -45,7 +45,6 @@ spring:
       sharding:
         tables:
           users:
-            # 修正为实际存在的表名（0-1后缀）
             actual-data-nodes: ds$->{0..1}.users_$->{0..1}
             table-strategy:
               standard:
@@ -59,13 +58,11 @@ spring:
           users-database-inline:
             type: INLINE
             props:
-              # 分库规则：user_id % 4 后右移1位 (等价除以2取整)
-              algorithm-expression: ds$->{ (user_id % 4) >> 1 }
+              algorithm-expression: ds$->{ (user_id & 0xFFF) % 2 }
           users-table-inline:
             type: INLINE
             props:
-              # 分表规则：user_id % 4 后取二进制最后一位
-              algorithm-expression: users_$->{ (user_id % 4) & 1 }
+              algorithm-expression: users_$->{ ((user_id >> 22) & 0x3FF) % 2 }
         key-generators:
           snowflake:
             type: SNOWFLAKE

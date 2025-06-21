@@ -1,6 +1,7 @@
 package com.ajiang.permissionservice.controller;
 
 import com.ajiang.common.model.ApiResponse;
+import com.ajiang.common.model.PageResult;
 import com.ajiang.permissionservice.serivce.RoleService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -85,4 +86,51 @@ public class RoleController {
         return ApiResponse.success();
     }
 
+    /**
+     * 分页查询可见用户ID列表
+     *
+     * @param currentUserId 当前用户ID
+     * @param currentUserRole 当前用户角色
+     * @param pageNo 页码
+     * @param pageSize 每页大小
+     * @return 分页结果（只包含用户ID）
+     */
+    @PostMapping("/visible-users")
+    public PageResult<Long> getVisibleUserIds(
+            @RequestParam Long currentUserId,
+            @RequestParam String currentUserRole,
+            @RequestParam int pageNo,
+            @RequestParam int pageSize) {
+
+        log.info("分页查询可见用户ID列表: currentUserId={}, currentUserRole={}, pageNo={}, pageSize={}",
+                currentUserId, currentUserRole, pageNo, pageSize);
+
+        // 参数验证
+        if (currentUserId == null || currentUserId <= 0) {
+            throw new IllegalArgumentException("当前用户ID不能为空且必须大于0");
+        }
+        if (currentUserRole == null || currentUserRole.trim().isEmpty()) {
+            throw new IllegalArgumentException("当前用户角色不能为空");
+        }
+        if (pageNo <= 0) {
+            throw new IllegalArgumentException("页码必须大于0");
+        }
+        if (pageSize <= 0 || pageSize > 100) {
+            throw new IllegalArgumentException("每页大小必须在1-100之间");
+        }
+
+        try {
+            PageResult<Long> visibleUserIds = roleService.getVisibleUserIds(currentUserId, currentUserRole, pageNo,
+                    pageSize);
+
+            log.info("分页查询可见用户ID列表成功: 返回{}个用户ID, 总数={}",
+                    visibleUserIds.getItems().size(), visibleUserIds.getCounts());
+
+            return visibleUserIds;
+        } catch (Exception e) {
+            log.error("分页查询可见用户ID列表失败: currentUserId={}, currentUserRole={}, 错误: {}",
+                    currentUserId, currentUserRole, e.getMessage(), e);
+            throw e;
+        }
+    }
 }

@@ -1,7 +1,10 @@
 package com.ajiang.permissionservice.serivce;
 
+import com.ajiang.common.model.PageResult;
 import com.ajiang.permissionservice.entity.Role;
 import com.baomidou.mybatisplus.extension.service.IService;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 
 import java.util.List;
 import java.util.Map;
@@ -45,4 +48,11 @@ public interface RoleService extends IService<Role> {
      */
     void downgradeToUser(Long userId);
 
+
+    PageResult<Long> getVisibleUserIds(
+            @RequestParam Long currentUserId,
+            @RequestParam String currentUserRole,
+            @RequestParam int pageNo,
+            @RequestParam int pageSize
+    );
 }

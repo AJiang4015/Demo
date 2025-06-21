@@ -1,6 +1,7 @@
 package com.ajiang.permissionservice.serivce.impl;
 
 import com.ajiang.common.exception.BusinessException;
+import com.ajiang.common.model.PageResult;
 import com.ajiang.permissionservice.entity.Role;
 import com.ajiang.permissionservice.entity.UserRole;
 import com.ajiang.permissionservice.mapper.RoleMapper;
@@ -8,6 +9,7 @@ import com.ajiang.permissionservice.mapper.UserRoleMapper;
 import com.ajiang.permissionservice.serivce.RoleService;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -15,6 +17,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.CollectionUtils;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -103,10 +106,10 @@ public class RoleServiceImpl extends ServiceImpl<RoleMapper, Role> implements Ro
 
     private void changeUserRole(Long userId, int roleId) {
 
-            // 1. 检查用户是否存在角色绑定
-            UserRole existingUserRole = validateUserRoleBinding(userId);
-            // 3. 更新用户角色
-            updateUserRoleToTarget(userId, roleId);
+        // 1. 检查用户是否存在角色绑定
+        UserRole existingUserRole = validateUserRoleBinding(userId);
+        // 3. 更新用户角色
+        updateUserRoleToTarget(userId, roleId);
 
     }
 
@@ -142,5 +145,64 @@ public class RoleServiceImpl extends ServiceImpl<RoleMapper, Role> implements Ro
     @Override
     public void downgradeToUser(Long userId) {
         changeUserRole(userId, 2);
+    }
+
+    @Override
+    public PageResult<Long> getVisibleUserIds(Long currentUserId, String currentUserRole, int pageNo, int pageSize) {
+        log.info("分页查询可见用户ID: currentUserId={}, role={}, pageNo={}, pageSize={}",
+                currentUserId, currentUserRole, pageNo, pageSize);
+
+        // 1. 构建基础查询条件
+        LambdaQueryWrapper<UserRole> wrapper = new LambdaQueryWrapper<>();
+        wrapper.select(UserRole::getUserId); // 只查询userId字段
+
+        // 2. 根据角色过滤
+        if ("admin".equals(currentUserRole)) {
+            // 管理员：可以查看普通用户(roleId=2)和自己(可能是roleId=3)
+            wrapper.and(w -> w.eq(UserRole::getRoleId, 2)
+                    .or().eq(UserRole::getUserId, currentUserId));
+        } else if ("super_admin".equals(currentUserRole)) {
+            // 超管：查看所有用户（无过滤条件）
+            log.debug("超管查询所有用户");
+        } else {
+            // 普通用户：只能查看自己
+            wrapper.eq(UserRole::getUserId, currentUserId);
+        }
+
+        // 3. 查询所有符合条件的用户ID并去重
+        List<UserRole> allUserRoles = userRoleMapper.selectList(wrapper);
+        List<Long> allDistinctUserIds = allUserRoles.stream()
+                .map(UserRole::getUserId)
+                .distinct()
+                .sorted() // 排序保证分页的一致性
+                .collect(Collectors.toList());
+
+        long totalDistinctUsers = allDistinctUserIds.size();
+        log.debug("去重后的总用户数: {}", totalDistinctUsers);
+
+        // 4. 对去重后的用户ID列表进行内存分页
+        int startIndex = (pageNo - 1) * pageSize;
+        int endIndex = Math.min(startIndex + pageSize, allDistinctUserIds.size());
+
+        List<Long> pagedUserIds;
+        if (startIndex >= allDistinctUserIds.size()) {
+            // 超出范围，返回空列表
+            pagedUserIds = new ArrayList<>();
+        } else {
+            // 获取当前页的用户ID
+            pagedUserIds = allDistinctUserIds.subList(startIndex, endIndex);
+        }
+
+        // 5. 构建结果
+        PageResult<Long> pageResult = new PageResult<>();
+        pageResult.setItems(pagedUserIds);
+        pageResult.setCounts(totalDistinctUsers);
+        pageResult.setPage(pageNo);
+        pageResult.setPageSize(pageSize);
+
+        log.info("查询结果: 去重后总数={}, 当前页用户数={}, 页码={}/{}",
+                totalDistinctUsers, pagedUserIds.size(), pageNo,
+                (totalDistinctUsers + pageSize - 1) / pageSize);
+        return pageResult;
     }
 }

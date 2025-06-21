@@ -27,9 +27,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
@@ -216,83 +214,108 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
      **/
     @Override
     public PageResult<User> getUserList(PageParams pageParams, Long currentUserId, String ip) {
-        // 1. 获取当前用户角色
-        String currentUserRole = permissionServiceClient.getUserRoleCode(currentUserId);
-        log.info("当前用户角色: {}, userId={}", currentUserRole, currentUserId);
+        log.info("用户列表查询开始: currentUserId={}, pageNo={}, pageSize={}",
+                currentUserId, pageParams.getPageNo(), pageParams.getPageSize());
 
-        // 2. 通过当前用户ID查出其所在的表（通过 user_id 精确查询，自动路由）
-        User currentUser = this.getById(currentUserId);
-        if (currentUser == null) {
-            throw new BusinessException("当前用户不存在");
+        try {
+            // 1. 获取当前用户角色
+            String currentUserRole = permissionServiceClient.getUserRoleCode(currentUserId);
+            log.info("当前用户角色: {}, userId={}", currentUserRole, currentUserId);
+
+            // 2. 普通用户直接查询自己
+            if ("user".equals(currentUserRole)) {
+                log.debug("普通用户查询自己的信息");
+                return handleNormalUser(currentUserId, pageParams, ip);
+            }
+
+            // 3. 管理员/超管：通过RPC获取分页ID
+            log.debug("管理员/超管通过权限服务获取可见用户ID列表");
+            PageResult<Long> idPageResult = permissionServiceClient.getVisibleUserIds(
+                    currentUserId,
+                    currentUserRole,
+                    pageParams.getPageNo().intValue(),
+                    pageParams.getPageSize().intValue());
+
+            // 4. 没有数据直接返回
+            if (idPageResult.getItems().isEmpty()) {
+                log.info("权限过滤后无可见用户，返回空结果");
+                PageResult<User> emptyResult = PageResult.empty(pageParams.getPageNo(), pageParams.getPageSize());
+                logProducer.sendUserListViewLog(currentUserId, currentUserRole,
+                        pageParams.getPageNo(), pageParams.getPageSize(), 0, ip);
+                return emptyResult;
+            }
+
+            // 5. 批量查询用户详情
+            log.debug("批量查询用户详情，用户ID数量: {}", idPageResult.getItems().size());
+            List<User> users = userMapper.selectBatchIds(idPageResult.getItems());
+
+            // 6. 验证查询结果的完整性
+            if (users.size() != idPageResult.getItems().size()) {
+                log.warn("用户详情查询不完整: 期望{}个用户，实际查到{}个用户",
+                        idPageResult.getItems().size(), users.size());
+            }
+
+            // 7. 构建结果
+            PageResult<User> result = new PageResult<>();
+            result.setItems(users);
+            result.setCounts(idPageResult.getCounts());
+            result.setPage(pageParams.getPageNo());
+            result.setPageSize(pageParams.getPageSize());
+
+            // 8. 记录日志
+            logProducer.sendUserListViewLog(currentUserId, currentUserRole,
+                    pageParams.getPageNo(), pageParams.getPageSize(), users.size(), ip);
+
+            log.info("用户列表查询完成: 返回{}个用户，总数={}", users.size(), idPageResult.getCounts());
+            return result;
+
+        } catch (Exception e) {
+            log.error("用户列表查询失败: currentUserId={}, 错误: {}", currentUserId, e.getMessage(), e);
+            throw new BusinessException("查询用户列表失败: " + e.getMessage());
+        }
+    }
+
+    private PageResult<User> handleNormalUser(Long userId, PageParams pageParams, String ip) {
+        User user = userMapper.selectById(userId);
+        if (user == null) {
+            throw new BusinessException("用户不存在");
         }
 
-        // 3. 确定当前用户所在分表编号（与 ShardingSphere 分片规则一致）
-        int userTableIndex = (int) (currentUserId % 2); // 假设按 user_id % 2 分片
-
-        // 4. 构建分页参数
-        Page<User> page = new Page<>(pageParams.getPageNo(), pageParams.getPageSize());
-
-        // 5. 构建分页查询条件
-        LambdaQueryWrapper<User> wrapper = new LambdaQueryWrapper<>();
-
-        // 强制限定仅在“当前用户所在分表”进行分页
-        wrapper.apply("MOD(user_id, 2) = {0}", userTableIndex);
-
-        // 根据角色控制可见范围
-        switch (currentUserRole) {
-            case "user":
-                // 普通用户仅查看自己
-                wrapper.eq(User::getUserId, currentUserId);
-                break;
-            case "admin":
-                // 管理员：仅查看本分表中其他普通用户 + 自己
-                // 后处理过滤，仅保留 user 角色或自己
-                break;
-            case "super_admin":
-                // 超级管理员：仅查看本分表中的所有人（无需过滤）
-                break;
-            default:
-                throw new BusinessException("未知用户角色: " + currentUserRole);
-        }
-
-        // 6. 执行分页查询
-        Page<User> userPage = this.page(page, wrapper);
-        List<User> allUsers = userPage.getRecords();
-
-        // 7. 管理员角色需要进行后置过滤
-        List<User> filteredUsers;
-        if ("admin".equals(currentUserRole)) {
-            filteredUsers = allUsers.stream()
-                    .filter(user -> {
-                        // 自己总能查看
-                        if (user.getUserId().equals(currentUserId)) {
-                            return true;
-                        }
-                        try {
-                            // 只允许查看普通用户
-                            String role = permissionServiceClient.getUserRoleCode(user.getUserId());
-                            return "user".equals(role);
-                        } catch (Exception e) {
-                            log.warn("获取用户 {} 角色失败: {}", user.getUserId(), e.getMessage());
-                            return false;
-                        }
-                    }).collect(Collectors.toList());
-        } else {
-            filteredUsers = allUsers; // 普通用户和超级管理员直接用原数据
-        }
-
-        // 8. 构建分页响应结果
         PageResult<User> result = new PageResult<>();
-        result.setItems(filteredUsers);
-        result.setCounts(filteredUsers.size());
-        result.setPage(userPage.getCurrent());
-        result.setPageSize(userPage.getSize());
+        result.setItems(Collections.singletonList(user));
+        result.setCounts(1L);
+        result.setPage(1);
+        result.setPageSize(1);
 
-        // 9. 记录日志
-        logProducer.sendUserListViewLog(currentUserId, currentUserRole, pageParams.getPageNo(),
-                pageParams.getPageSize(), filteredUsers.size(), ip);
-
+        logProducer.sendUserListViewLog(userId, "user",
+                pageParams.getPageNo(), pageParams.getPageSize(), 1, ip);
         return result;
+    }
+
+    /**
+     * 过滤管理员可见的用户（普通用户和自己）
+     */
+    private List<User> filterAdminVisibleUsers(List<User> users, Long adminUserId) {
+        List<User> visibleUsers = new ArrayList<>();
+
+        for (User user : users) {
+            if (user.getUserId().equals(adminUserId)) {
+                // 自己总是可见
+                visibleUsers.add(user);
+            } else {
+                try {
+                    // 只保留普通用户
+                    String role = permissionServiceClient.getUserRoleCode(user.getUserId());
+                    if ("user".equals(role)) {
+                        visibleUsers.add(user);
+                    }
+                } catch (Exception e) {
+                    log.warn("获取用户 {} 角色失败: {}", user.getUserId(), e.getMessage());
+                }
+            }
+        }
+
+        return visibleUsers;
     }
 
 

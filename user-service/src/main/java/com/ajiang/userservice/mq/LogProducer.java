@@ -88,6 +88,20 @@ public class LogProducer {
     }
 
     /**
+     * 发送用户登出日志
+     *
+     * @param userId   用户ID
+     * @param username 用户名
+     * @param ip       IP地址
+     */
+    public void sendUserLogoutLog(Long userId, String username, String ip) {
+        Map<String, Object> detail = new HashMap<>();
+        detail.put("username", username);
+
+        sendOperationLog(userId, "USER_LOGOUT", ip, detail);
+    }
+
+    /**
      * 发送用户信息更新日志
      *
      * @param userId   用户ID

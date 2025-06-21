@@ -71,6 +71,20 @@ spring:
     props:
       sql-show: true
 
+  # Redis 配置
+  redis:
+    host: 192.168.127.102
+    port: 6379
+    password:
+    database: 0
+    timeout: 3000ms
+    jedis:
+      pool:
+        max-active: 20
+        max-idle: 10
+        min-idle: 5
+        max-wait: 3000ms
+
   # RabbitMQ 配置（保持不变）
   rabbitmq:
     host: 192.168.127.102

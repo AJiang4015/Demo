@@ -36,6 +36,14 @@ public interface UserService extends IService<User> {
     String login(UserLoginDto loginDto, String ip);
 
     /**
+     * 用户登出
+     *
+     * @param token JWT token
+     * @param ip    客户端IP
+     */
+    void logout(String token, String ip);
+
+    /**
      * 获取用户信息
      *
      * @param currentUserId 当前用户ID

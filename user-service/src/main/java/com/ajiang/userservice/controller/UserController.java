@@ -84,6 +84,26 @@ public class UserController {
     }
 
     /**
+     * 用户登出
+     * POST /logout
+     * 从Redis白名单中移除Token
+     *
+     * @param request HTTP请求
+     * @return 操作结果
+     */
+    @PostMapping("/logout")
+    public ApiResponse<Boolean> logout(HttpServletRequest request) {
+        log.info("用户登出请求");
+        String token = getTokenFromRequest(request);
+        String ip = getClientIp(request);
+
+        userService.logout(token, ip);
+
+        log.info("用户登出成功");
+        return ApiResponse.success(true);
+    }
+
+    /**
      * 获取用户列表
      * GET /list
      * 根据权限校验结果返回：

@@ -129,6 +129,32 @@
             <artifactId>seata-spring-boot-starter</artifactId>
         </dependency>
 
+        <!-- Redis Spring Boot Starter -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-redis</artifactId>
+        </dependency>
+
+        <!-- Jedis 连接池 -->
+        <dependency>
+            <groupId>redis.clients</groupId>
+            <artifactId>jedis</artifactId>
+        </dependency>
+
+        <!-- 添加 Lettuce 核心依赖 -->
+        <dependency>
+            <groupId>io.lettuce</groupId>
+            <artifactId>lettuce-core</artifactId>
+            <version>6.2.4.RELEASE</version>
+        </dependency>
+
+        <!-- 添加 Jackson 数据类型支持 -->
+        <dependency>
+            <groupId>com.fasterxml.jackson.datatype</groupId>
+            <artifactId>jackson-datatype-jsr310</artifactId>
+            <version>2.14.2</version>
+        </dependency>
+
         <!-- 测试依赖 -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

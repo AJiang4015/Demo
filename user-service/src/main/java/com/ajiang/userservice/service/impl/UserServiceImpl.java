@@ -13,6 +13,7 @@ import com.ajiang.userservice.feignclient.PermissionServiceClient;
 import com.ajiang.userservice.mapper.UserMapper;
 import com.ajiang.userservice.mq.LogProducer;
 import com.ajiang.userservice.service.UserService;
+import com.ajiang.userservice.service.TokenWhitelistService;
 import com.ajiang.userservice.util.SeataTransactionUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
@@ -52,6 +53,9 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
 
     @Autowired
     private LogProducer logProducer;
+
+    @Autowired
+    private TokenWhitelistService tokenWhitelistService;
 
     /**
      * @description: 用户注册
@@ -135,11 +139,53 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         // 生成JWT Token
         String token = jwtUtil.generateToken(user.getUserId(), "user");
 
+        // 将token添加到Redis白名单，设置过期时间为半小时（1800秒）
+        long expireSeconds = 30 * 60; // 24小时
+        tokenWhitelistService.addTokenToWhitelist(token, user.getUserId(), expireSeconds);
+
         // 发送用户登录日志到MQ
         logProducer.sendUserLoginLog(user.getUserId(), user.getUsername(), ip);
 
         log.info("用户登录成功: {}", user.getUsername());
         return token;
+    }
+
+    /**
+     * @description: 用户登出
+     * @author: ajiang
+     * @date: 2025/1/27 10:30
+     * @param: [token, ip]
+     * @return: void
+     **/
+    @Override
+    public void logout(String token, String ip) {
+        log.info("用户登出请求: token={}", token.substring(0, Math.min(token.length(), 20)) + "...");
+
+        try {
+            // 验证token格式和签名
+            Long userId = jwtUtil.getUserIdFromToken(token);
+
+            // 检查token是否在白名单中
+            if (!tokenWhitelistService.isTokenInWhitelist(token)) {
+                log.warn("尝试登出无效token: userId={}", userId);
+                throw new BusinessException("无效的token");
+            }
+
+            // 从Redis白名单中移除token
+            tokenWhitelistService.removeTokenFromWhitelist(token);
+
+            // 查询用户信息用于日志记录
+            User user = userMapper.selectById(userId);
+            String username = user != null ? user.getUsername() : "unknown";
+
+            // 发送用户登出日志到MQ
+            logProducer.sendUserLogoutLog(userId, username, ip);
+
+            log.info("用户登出成功: userId={}, username={}", userId, username);
+        } catch (Exception e) {
+            log.error("用户登出失败: error={}", e.getMessage(), e);
+            throw new BusinessException("登出失败: " + e.getMessage());
+        }
     }
 
     /**
@@ -317,7 +363,6 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
 
         return visibleUsers;
     }
-
 
     /**
      * @description: 修改用户消息

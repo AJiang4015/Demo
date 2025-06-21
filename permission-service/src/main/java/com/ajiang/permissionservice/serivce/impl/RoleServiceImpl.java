@@ -138,13 +138,37 @@ public class RoleServiceImpl extends ServiceImpl<RoleMapper, Role> implements Ro
     }
 
     @Override
-    public void upgradeToAdmin(Long userId) {
-        changeUserRole(userId, 3);
+    public void upgradeToAdmin(Long currentUserId, String currentUserRole, Long targetUserId) {
+        log.info("升级用户为管理员: currentUserId={}, currentUserRole={}, targetUserId={}",
+                currentUserId, currentUserRole, targetUserId);
+
+        // 1. 验证当前用户是否为超级管理员
+        validateSuperAdminPermission(currentUserId, currentUserRole);
+
+        // 2. 验证目标用户当前角色是否为普通用户
+        validateTargetUserRoleForUpgrade(targetUserId);
+
+        // 3. 执行升级操作
+        changeUserRole(targetUserId, 3);
+
+        log.info("升级用户为管理员成功: targetUserId={}", targetUserId);
     }
 
     @Override
-    public void downgradeToUser(Long userId) {
-        changeUserRole(userId, 2);
+    public void downgradeToUser(Long currentUserId, String currentUserRole, Long targetUserId) {
+        log.info("降级用户为普通用户: currentUserId={}, currentUserRole={}, targetUserId={}",
+                currentUserId, currentUserRole, targetUserId);
+
+        // 1. 验证当前用户是否为超级管理员
+        validateSuperAdminPermission(currentUserId, currentUserRole);
+
+        // 2. 验证目标用户当前角色是否为管理员
+        validateTargetUserRoleForDowngrade(targetUserId);
+
+        // 3. 执行降级操作
+        changeUserRole(targetUserId, 2);
+
+        log.info("降级用户为普通用户成功: targetUserId={}", targetUserId);
     }
 
     @Override
@@ -204,5 +228,47 @@ public class RoleServiceImpl extends ServiceImpl<RoleMapper, Role> implements Ro
                 totalDistinctUsers, pagedUserIds.size(), pageNo,
                 (totalDistinctUsers + pageSize - 1) / pageSize);
         return pageResult;
+    }
+
+    /**
+     * 验证超级管理员权限
+     *
+     * @param currentUserId   当前用户ID
+     * @param currentUserRole 当前用户角色
+     */
+    private void validateSuperAdminPermission(Long currentUserId, String currentUserRole) {
+        if (!"super_admin".equals(currentUserRole)) {
+            log.error("权限不足，只有超级管理员可以执行此操作: currentUserId={}, currentUserRole={}",
+                    currentUserId, currentUserRole);
+            throw new BusinessException("权限不足，只有超级管理员可以执行此操作");
+        }
+    }
+
+    /**
+     * 验证目标用户角色是否可以升级（只有普通用户可以升级为管理员）
+     *
+     * @param targetUserId 目标用户ID
+     */
+    private void validateTargetUserRoleForUpgrade(Long targetUserId) {
+        String targetUserRole = getUserRoleCode(targetUserId);
+        if (!"user".equals(targetUserRole)) {
+            log.error("目标用户角色不符合升级条件，只有普通用户可以升级为管理员: targetUserId={}, targetUserRole={}",
+                    targetUserId, targetUserRole);
+            throw new BusinessException("只有普通用户可以升级为管理员，当前用户角色为: " + targetUserRole);
+        }
+    }
+
+    /**
+     * 验证目标用户角色是否可以降级（只有管理员可以降级为普通用户）
+     *
+     * @param targetUserId 目标用户ID
+     */
+    private void validateTargetUserRoleForDowngrade(Long targetUserId) {
+        String targetUserRole = getUserRoleCode(targetUserId);
+        if (!"admin".equals(targetUserRole)) {
+            log.error("目标用户角色不符合降级条件，只有管理员可以降级为普通用户: targetUserId={}, targetUserRole={}",
+                    targetUserId, targetUserRole);
+            throw new BusinessException("只有管理员可以降级为普通用户，当前用户角色为: " + targetUserRole);
+        }
     }
 }

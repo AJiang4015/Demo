@@ -36,23 +36,27 @@ public interface RoleService extends IService<Role> {
 
     /**
      * 升级用户为管理员
+     * 只有超级管理员可以调用，且只能升级普通用户
      *
-     * @param userId 用户ID
+     * @param currentUserId   当前操作用户ID
+     * @param currentUserRole 当前操作用户角色
+     * @param targetUserId    目标用户ID
      */
-    void upgradeToAdmin(Long userId);
+    void upgradeToAdmin(Long currentUserId, String currentUserRole, Long targetUserId);
 
     /**
      * 降级用户为普通用户
+     * 只有超级管理员可以调用，且只能降级管理员
      *
-     * @param userId 用户ID
+     * @param currentUserId   当前操作用户ID
+     * @param currentUserRole 当前操作用户角色
+     * @param targetUserId    目标用户ID
      */
-    void downgradeToUser(Long userId);
-
+    void downgradeToUser(Long currentUserId, String currentUserRole, Long targetUserId);
 
     PageResult<Long> getVisibleUserIds(
             @RequestParam Long currentUserId,
             @RequestParam String currentUserRole,
             @RequestParam int pageNo,
-            @RequestParam int pageSize
-    );
+            @RequestParam int pageSize);
 }

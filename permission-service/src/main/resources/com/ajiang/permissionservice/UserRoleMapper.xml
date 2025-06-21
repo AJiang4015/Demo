@@ -2,11 +2,4 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.ajiang.permissionservice.mapper.UserRoleMapper">
 
-    <select id="selectByUserIds" resultType="com.ajiang.permissionservice.entity.UserRole">
-        SELECT * FROM user_roles WHERE user_id IN
-        <foreach collection="userIds" item="id" open="(" separator="," close=")">
-            #{id}
-        </foreach>
-    </select>
-
 </mapper>

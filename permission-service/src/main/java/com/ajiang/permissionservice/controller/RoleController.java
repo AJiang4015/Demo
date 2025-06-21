@@ -1,12 +1,15 @@
 package com.ajiang.permissionservice.controller;
 
+import com.ajiang.common.exception.BusinessException;
 import com.ajiang.common.model.ApiResponse;
 import com.ajiang.common.model.PageResult;
+import com.ajiang.common.util.JwtUtil;
 import com.ajiang.permissionservice.serivce.RoleService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
+import javax.servlet.http.HttpServletRequest;
 import java.util.List;
 import java.util.Map;
 
@@ -25,6 +28,9 @@ public class RoleController {
 
     @Autowired
     RoleService roleService;
+
+    @Autowired
+    JwtUtil jwtUtil;
 
     /**
      * 绑定默认角色（普通用户）
@@ -60,13 +66,21 @@ public class RoleController {
      * 升级用户为管理员
      * 超级管理员调用：将普通用户升级为管理员
      *
-     * @param userId 用户ID
+     * @param userId  用户ID
+     * @param request HTTP请求对象（用于获取token）
      * @return 操作结果
      */
     @PostMapping("/upgrade/{userId}")
-    public ApiResponse<Void> upgradeToAdmin(@PathVariable Long userId) {
+    public ApiResponse<Void> upgradeToAdmin(@PathVariable Long userId, HttpServletRequest request) {
         log.info("升级用户为管理员请求: userId={}", userId);
-        roleService.upgradeToAdmin(userId);
+
+        // 从token获取当前用户信息并验证权限
+        Long currentUserId = getCurrentUserIdFromToken(request);
+        String currentUserRole = getCurrentUserRoleFromToken(request);
+
+        log.info("当前操作用户: userId={}, role={}", currentUserId, currentUserRole);
+
+        roleService.upgradeToAdmin(currentUserId, currentUserRole, userId);
         log.info("升级用户为管理员成功: userId={}", userId);
         return ApiResponse.success();
     }
@@ -75,13 +89,21 @@ public class RoleController {
      * 降级用户为普通用户
      * 超级管理员调用：将管理员降级为普通用户
      *
-     * @param userId 用户ID
+     * @param userId  用户ID
+     * @param request HTTP请求对象（用于获取token）
      * @return 操作结果
      */
     @PostMapping("/downgrade/{userId}")
-    public ApiResponse<Void> downgradeToUser(@PathVariable Long userId) {
+    public ApiResponse<Void> downgradeToUser(@PathVariable Long userId, HttpServletRequest request) {
         log.info("降级用户为普通用户请求: userId={}", userId);
-        roleService.downgradeToUser(userId);
+
+        // 从token获取当前用户信息并验证权限
+        Long currentUserId = getCurrentUserIdFromToken(request);
+        String currentUserRole = getCurrentUserRoleFromToken(request);
+
+        log.info("当前操作用户: userId={}, role={}", currentUserId, currentUserRole);
+
+        roleService.downgradeToUser(currentUserId, currentUserRole, userId);
         log.info("降级用户为普通用户成功: userId={}", userId);
         return ApiResponse.success();
     }
@@ -89,10 +111,10 @@ public class RoleController {
     /**
      * 分页查询可见用户ID列表
      *
-     * @param currentUserId 当前用户ID
+     * @param currentUserId   当前用户ID
      * @param currentUserRole 当前用户角色
-     * @param pageNo 页码
-     * @param pageSize 每页大小
+     * @param pageNo          页码
+     * @param pageSize        每页大小
      * @return 分页结果（只包含用户ID）
      */
     @PostMapping("/visible-users")
@@ -131,6 +153,52 @@ public class RoleController {
             log.error("分页查询可见用户ID列表失败: currentUserId={}, currentUserRole={}, 错误: {}",
                     currentUserId, currentUserRole, e.getMessage(), e);
             throw e;
+        }
+    }
+
+    /**
+     * 从请求中获取Token
+     *
+     * @param request HTTP请求对象
+     * @return Token
+     */
+    private String getTokenFromRequest(HttpServletRequest request) {
+        String bearerToken = request.getHeader("Authorization");
+        if (bearerToken != null && bearerToken.startsWith("Bearer ")) {
+            return bearerToken.substring(7);
+        }
+        throw new BusinessException("未提供有效的Token");
+    }
+
+    /**
+     * 从token中获取当前用户ID
+     *
+     * @param request HTTP请求对象
+     * @return 当前用户ID
+     */
+    private Long getCurrentUserIdFromToken(HttpServletRequest request) {
+        try {
+            String token = getTokenFromRequest(request);
+            return jwtUtil.getUserIdFromToken(token);
+        } catch (Exception e) {
+            log.error("获取当前用户ID失败: {}", e.getMessage());
+            throw new BusinessException("获取当前用户信息失败");
+        }
+    }
+
+    /**
+     * 从token中获取当前用户角色
+     *
+     * @param request HTTP请求对象
+     * @return 当前用户角色
+     */
+    private String getCurrentUserRoleFromToken(HttpServletRequest request) {
+        try {
+            String token = getTokenFromRequest(request);
+            return jwtUtil.getRoleCodeFromToken(token);
+        } catch (Exception e) {
+            log.error("获取当前用户角色失败: {}", e.getMessage());
+            throw new BusinessException("获取当前用户角色信息失败");
         }
     }
 }

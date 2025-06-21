@@ -15,8 +15,8 @@ import java.util.Map;
 public class JwtUtil {
 
     // 直接在类中设置 JWT 密钥和过期时间（单位：秒）
-    private final String secret = "aj_secret_123456";   // 签名密钥
-    private final Long expiration = 86400L;             // 1 天，单位为秒
+    private final String secret = "AJiang";   // 签名密钥
+    private final Long expiration = 1800L;             // 半小时
 
     public Long getUserIdFromToken(String token) {
         Claims claims = getClaimsFromToken(token);

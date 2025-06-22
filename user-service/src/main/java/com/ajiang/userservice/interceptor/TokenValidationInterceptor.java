@@ -12,7 +12,6 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
 /**
- * AI生成
  * Token验证拦截器
  * 验证JWT Token的有效性和白名单状态
  */

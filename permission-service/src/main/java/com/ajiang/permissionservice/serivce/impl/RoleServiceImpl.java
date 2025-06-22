@@ -144,14 +144,6 @@ public class RoleServiceImpl extends ServiceImpl<RoleMapper, Role> implements Ro
 
     private void changeUserRole(Long userId, int roleId) {
 
-        // 1. 检查用户是否存在角色绑定
-        UserRole existingUserRole = validateUserRoleBinding(userId);
-        // 3. 更新用户角色
-        updateUserRoleToTarget(userId, roleId);
-
-    }
-
-    private UserRole validateUserRoleBinding(Long userId) {
         LambdaQueryWrapper<UserRole> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(UserRole::getUserId, userId);
         UserRole userRole = userRoleMapper.selectOne(queryWrapper);
@@ -161,7 +153,8 @@ public class RoleServiceImpl extends ServiceImpl<RoleMapper, Role> implements Ro
             throw new BusinessException("用户未绑定任何角色，请先绑定默认角色");
         }
 
-        return userRole;
+        updateUserRoleToTarget(userId, roleId);
+
     }
 
     private void updateUserRoleToTarget(Long userId, int roleId) {

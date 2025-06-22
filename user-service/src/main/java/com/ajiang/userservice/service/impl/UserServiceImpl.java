@@ -119,6 +119,17 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         log.info("[业务完成] 用户注册成功: userId={}, username={}, 总耗时={}ms",
                 user.getUserId(), user.getUsername(), totalTime);
         SeataTransactionUtil.logTransactionSuccess("用户注册");
+
+        try {
+            long mqStartTime = System.currentTimeMillis();
+            logProducer.sendUserRegisterLog(user.getUserId(), user.getUsername(), user.getEmail(), user.getPhone(), ip);
+            long mqEndTime = System.currentTimeMillis();
+            log.debug("[消息队列] 注册日志发送完成: userId={}, 耗时={}ms",
+                    user.getUserId(), (mqEndTime - mqStartTime));
+        } catch (Exception e) {
+            log.error("[消息队列] 注册日志发送失败: userId={}, error={}",
+                    user.getUserId(), e.getMessage(), e);
+        }
         return user.getUserId();
     }
 

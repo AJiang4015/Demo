@@ -30,12 +30,12 @@ public class RoleController {
     JwtUtil jwtUtil;
 
     /**
-     * 绑定默认角色（普通用户）
-     * 为新注册用户绑定默认的普通用户角色
-     *
-     * @param userId 用户ID
-     * @return 操作结果
-     */
+     * @description: 绑定默认角色
+     * @author: ajiang
+     * @date: 2025/6/22 13:07
+     * @param: [userId]
+     * @return: com.ajiang.common.model.ApiResponse<java.lang.Void>
+     **/
     @PostMapping("/bind/{userId}")
     public ApiResponse<Void> bindDefaultRole(@PathVariable Long userId) {
         log.info("绑定默认角色请求: userId={}", userId);
@@ -45,12 +45,12 @@ public class RoleController {
     }
 
     /**
-     * 查询用户角色码
-     * 根据用户ID查询对应的角色代码
-     *
-     * @param userId 用户ID
-     * @return 角色代码（super_admin/admin/user）
-     */
+     * @description: 查询用户角色码
+     * @author: ajiang
+     * @date: 2025/6/22 13:07
+     * @param: [userId]
+     * @return: java.lang.String
+     **/
     @GetMapping("/code/{userId}")
     public String getUserRoleCode(@PathVariable Long userId) {
         log.debug("查询用户角色码请求: userId={}", userId);
@@ -60,13 +60,12 @@ public class RoleController {
     }
 
     /**
-     * 升级用户为管理员
-     * 超级管理员调用：将普通用户升级为管理员
-     *
-     * @param userId  用户ID
-     * @param request HTTP请求对象（用于获取token）
-     * @return 操作结果
-     */
+     * @description: 升级管理员
+     * @author: ajiang
+     * @date: 2025/6/22 13:08
+     * @param: [userId, request]
+     * @return: com.ajiang.common.model.ApiResponse<java.lang.Void>
+     **/
     @PostMapping("/upgrade/{userId}")
     public ApiResponse<Void> upgradeToAdmin(@PathVariable Long userId, HttpServletRequest request) {
         log.info("升级用户为管理员请求: userId={}", userId);
@@ -83,13 +82,12 @@ public class RoleController {
     }
 
     /**
-     * 降级用户为普通用户
-     * 超级管理员调用：将管理员降级为普通用户
-     *
-     * @param userId  用户ID
-     * @param request HTTP请求对象（用于获取token）
-     * @return 操作结果
-     */
+     * @description: 降级普通用户
+     * @author: ajiang
+     * @date: 2025/6/22 13:08
+     * @param: [userId, request]
+     * @return: com.ajiang.common.model.ApiResponse<java.lang.Void>
+     **/
     @PostMapping("/downgrade/{userId}")
     public ApiResponse<Void> downgradeToUser(@PathVariable Long userId, HttpServletRequest request) {
         log.info("降级用户为普通用户请求: userId={}", userId);
@@ -106,14 +104,12 @@ public class RoleController {
     }
 
     /**
-     * 分页查询可见用户ID列表
-     *
-     * @param currentUserId   当前用户ID
-     * @param currentUserRole 当前用户角色
-     * @param pageNo          页码
-     * @param pageSize        每页大小
-     * @return 分页结果（只包含用户ID）
-     */
+     * @description: 分页查询可见列表
+     * @author: ajiang
+     * @date: 2025/6/22 13:08
+     * @param: [currentUserId, currentUserRole, pageNo, pageSize]
+     * @return: com.ajiang.common.model.PageResult<java.lang.Long>
+     **/
     @PostMapping("/visible-users")
     public PageResult<Long> getVisibleUserIds(
             @RequestParam Long currentUserId,

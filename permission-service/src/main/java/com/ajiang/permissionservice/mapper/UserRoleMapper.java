@@ -8,6 +8,4 @@ import java.util.List;
 
 @Mapper
 public interface UserRoleMapper extends BaseMapper<UserRole> {
-
-    List<UserRole> selectByUserIds(List<Long> userIds);
 }

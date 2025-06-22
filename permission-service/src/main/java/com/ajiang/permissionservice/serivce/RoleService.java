@@ -19,39 +19,12 @@ import java.util.Map;
  */
 public interface RoleService extends IService<Role> {
 
-    /**
-     * 绑定默认角色（普通用户）
-     *
-     * @param userId 用户ID
-     */
     void bindDefaultRole(Long userId);
 
-    /**
-     * 查询用户角色码
-     *
-     * @param userId 用户ID
-     * @return 角色代码
-     */
     String getUserRoleCode(Long userId);
 
-    /**
-     * 升级用户为管理员
-     * 只有超级管理员可以调用，且只能升级普通用户
-     *
-     * @param currentUserId   当前操作用户ID
-     * @param currentUserRole 当前操作用户角色
-     * @param targetUserId    目标用户ID
-     */
     void upgradeToAdmin(Long currentUserId, String currentUserRole, Long targetUserId);
 
-    /**
-     * 降级用户为普通用户
-     * 只有超级管理员可以调用，且只能降级管理员
-     *
-     * @param currentUserId   当前操作用户ID
-     * @param currentUserRole 当前操作用户角色
-     * @param targetUserId    目标用户ID
-     */
     void downgradeToUser(Long currentUserId, String currentUserRole, Long targetUserId);
 
     PageResult<Long> getVisibleUserIds(

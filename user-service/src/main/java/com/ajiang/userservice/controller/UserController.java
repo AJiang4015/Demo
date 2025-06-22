@@ -78,9 +78,7 @@ public class UserController {
         log.info("用户登出请求");
         String token = getTokenFromRequest(request);
         String ip = getClientIp(request);
-
         userService.logout(token, ip);
-
         log.info("用户登出成功");
         return ApiResponse.success(true);
     }
@@ -164,7 +162,6 @@ public class UserController {
     }
 
     /**
-     * AI生成
      * @description: 从Token中获取UserId
      * @author: ajiang
      * @date: 2025/6/21 17:37
@@ -177,7 +174,6 @@ public class UserController {
     }
 
     /**
-     * AI生成
      * @description: 从请求中获取Token
      * @author: ajiang
      * @date: 2025/6/21 17:37
@@ -193,7 +189,6 @@ public class UserController {
     }
 
     /**
-     * AI生成
      * @description: 获取客户端IP
      * @author: ajiang
      * @date: 2025/6/21 17:36

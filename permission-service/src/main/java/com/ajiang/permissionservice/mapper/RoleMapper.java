@@ -11,5 +11,4 @@ import java.util.Set;
 @Mapper
 public interface RoleMapper extends BaseMapper<Role> {
 
-    List<Role> selectByIds(Set<Integer> roleIds);
 }

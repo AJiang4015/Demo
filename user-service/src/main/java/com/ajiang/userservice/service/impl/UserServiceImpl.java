@@ -94,6 +94,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         user.setPassword(passwordEncoder.encode(registerDto.getPassword()));
         user.setEmail(registerDto.getEmail());
         user.setPhone(registerDto.getPhone());
+        user.setGmtCreate(LocalDateTime.now());
 
         dbStartTime = System.currentTimeMillis();
         userMapper.insert(user);

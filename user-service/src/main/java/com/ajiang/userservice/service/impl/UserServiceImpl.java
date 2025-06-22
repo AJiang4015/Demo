@@ -299,13 +299,12 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     }
 
     /**
-     * 获取用户信息
-     *
-     * @param currentUserId 当前用户ID
-     * @param userId        目标用户ID
-     * @param ip            客户端IP
-     * @return 用户信息
-     */
+     * @description: 获取用户信息
+     * @author: ajiang
+     * @date: 2025/6/22 16:52
+     * @param: [currentUserId, userId, ip]
+     * @return: com.ajiang.userservice.dto.UserResponseDto
+     **/
     @Override
     public UserResponseDto getUserInfo(Long currentUserId, Long userId, String ip) {
 
@@ -362,6 +361,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     }
 
     /**
+     * AI
      * @description: 获取用户列表
      * @author: ajiang
      * @date: 2025/6/18 15:12
@@ -494,31 +494,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         return result;
     }
 
-    /**
-     * 过滤管理员可见的用户（普通用户和自己）
-     */
-    private List<User> filterAdminVisibleUsers(List<User> users, Long adminUserId) {
-        List<User> visibleUsers = new ArrayList<>();
 
-        for (User user : users) {
-            if (user.getUserId().equals(adminUserId)) {
-                // 自己总是可见
-                visibleUsers.add(user);
-            } else {
-                try {
-                    // 只保留普通用户
-                    String role = permissionServiceClient.getUserRoleCode(user.getUserId());
-                    if ("user".equals(role)) {
-                        visibleUsers.add(user);
-                    }
-                } catch (Exception e) {
-                    log.warn("获取用户 {} 角色失败: {}", user.getUserId(), e.getMessage());
-                }
-            }
-        }
-
-        return visibleUsers;
-    }
 
     /**
      * @description: 修改用户消息
@@ -634,14 +610,12 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     }
 
     /**
-     * 重置密码
-     * 普通用户重置自己，管理员重置普通用户，超管重置所有人
-     *
-     * @param passwordResetDto 密码重置信息
-     * @param currentUserId    当前用户ID
-     * @param ip               客户端IP
-     * @return 是否成功
-     */
+     * @description: 重置密码
+     * @author: ajiang
+     * @date: 2025/6/22 16:53
+     * @param: [passwordResetDto, currentUserId, ip]
+     * @return: boolean
+     **/
     @Override
     @Transactional
     public boolean resetPassword(PasswordResetDto passwordResetDto, Long currentUserId, String ip) {
@@ -740,6 +714,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     }
 
     /**
+     * AI
      * 检查是否有权限修改目标用户
      * 权限规则：
      * 1. 超级管理员可以修改所有用户

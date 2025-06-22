@@ -1,6 +1,7 @@
 package com.ajiang.common.exception;
 
 /**
+ * AI
  * 业务异常类
  * 用于处理业务逻辑异常
  */

@@ -10,6 +10,7 @@ import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 /**
+ * AI
  * Token白名单服务实现类
  * 基于Redis实现token白名单机制
  */

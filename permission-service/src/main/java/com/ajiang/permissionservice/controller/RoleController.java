@@ -104,6 +104,7 @@ public class RoleController {
     }
 
     /**
+     * AI
      * @description: 分页查询可见列表
      * @author: ajiang
      * @date: 2025/6/22 13:08
@@ -150,6 +151,7 @@ public class RoleController {
     }
 
     /**
+     * AI
      * 从请求中获取Token
      *
      * @param request HTTP请求对象
@@ -164,6 +166,7 @@ public class RoleController {
     }
 
     /**
+     * AI
      * 从token中获取当前用户ID
      *
      * @param request HTTP请求对象
@@ -180,6 +183,7 @@ public class RoleController {
     }
 
     /**
+     * AI
      * 从token中获取当前用户角色
      *
      * @param request HTTP请求对象

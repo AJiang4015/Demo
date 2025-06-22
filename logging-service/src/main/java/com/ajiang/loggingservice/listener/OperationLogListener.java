@@ -16,6 +16,7 @@ import java.time.LocalDateTime;
 import java.util.Map;
 
 /**
+ * AI
  * 操作日志消息监听器
  * 监听RabbitMQ中的操作日志消息并落库
  * 使用Spring Boot自带的重试机制处理失败消息

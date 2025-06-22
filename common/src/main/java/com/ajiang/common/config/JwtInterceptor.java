@@ -12,6 +12,7 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
 /**
+ * AI
  * JWT拦截器
  * 用于验证请求中的JWT令牌
  */

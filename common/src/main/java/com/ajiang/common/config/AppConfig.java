@@ -8,6 +8,7 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 
 /**
+ * AI
  * @BelongsProject: Demo
  * @BelongsPackage: com.ajiang.userservice.config
  * @Author: ajiang

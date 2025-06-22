@@ -6,6 +6,7 @@ import org.springframework.context.annotation.Configuration;
 import javax.annotation.PostConstruct;
 
 /**
+ * AI
  * ShardingSphere 分库分表配置类
  * 提供分库分表的配置说明和监控
  *

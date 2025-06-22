@@ -18,6 +18,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
+ * AI
  * 全局异常处理器
  * 统一处理系统中的异常并返回标准响应
  */

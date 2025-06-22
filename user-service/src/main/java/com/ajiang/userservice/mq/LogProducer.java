@@ -20,7 +20,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 /**
- * AI生成
+ * AI
  * 日志消息服务
  * 负责发送操作日志消息到RabbitMQ
  * 实现生产者可靠性：消息确认、持久化、重试机制

@@ -6,6 +6,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 /**
+ * AI
  * 通用API响应对象
  * 用于统一接口返回格式
  *

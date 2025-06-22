@@ -5,9 +5,10 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 /**
+ * AI
  * RabbitMQ配置类
  * 配置操作日志相关的队列、交换机和绑定关系
- * 实现消息可靠性机制：持久化、死信队列、延迟重试
+ * 实现消息可靠性机制：持久化、死信队列
  */
 @Configuration
 public class RabbitMQConfig {

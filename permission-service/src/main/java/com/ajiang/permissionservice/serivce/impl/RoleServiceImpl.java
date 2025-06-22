@@ -68,7 +68,7 @@ public class RoleServiceImpl extends ServiceImpl<RoleMapper, Role> implements Ro
             long insertStartTime = System.currentTimeMillis();
             UserRole userRole = UserRole.builder()
                     .userId(userId)
-                    .roleId(2) // 默认普通用户角色
+                    .roleId(2)
                     .build();
 
             int insertResult = userRoleMapper.insert(userRole);
@@ -254,6 +254,14 @@ public class RoleServiceImpl extends ServiceImpl<RoleMapper, Role> implements Ro
         }
     }
 
+    /**
+     * AI
+     * @description:
+     * @author: ajiang
+     * @date: 2025/6/22 16:57
+     * @param: [currentUserId, currentUserRole, pageNo, pageSize]
+     * @return: com.ajiang.common.model.PageResult<java.lang.Long>
+     **/
     @Override
     public PageResult<Long> getVisibleUserIds(Long currentUserId, String currentUserRole, int pageNo, int pageSize) {
         log.info("分页查询可见用户ID: currentUserId={}, role={}, pageNo={}, pageSize={}",

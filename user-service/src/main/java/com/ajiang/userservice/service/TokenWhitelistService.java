@@ -1,6 +1,7 @@
 package com.ajiang.userservice.service;
 
 /**
+ * AI
  * Token白名单服务接口
  * 基于Redis实现token白名单机制
  */

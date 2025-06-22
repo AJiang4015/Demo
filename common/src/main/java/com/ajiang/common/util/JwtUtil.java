@@ -10,6 +10,14 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * AI
+ * @description:
+ * @author: ajiang
+ * @date: 2025/6/22 16:59
+ * @param:
+ * @return:
+ **/
 @Slf4j
 @Component
 public class JwtUtil {
